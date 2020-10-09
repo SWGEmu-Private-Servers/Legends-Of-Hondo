@@ -20,23 +20,19 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 
-		if (!suiBox->isTransferBox() || cancelPressed)
+		if (!suiBox->isTransferBox() || cancelPressed != 0)
 			return;
 
-		if (args->size() < 2)
+		if (args->size() < 1)
 			return;
 
-		uint32 energy = (uint64) Long::valueOf(args->get(1).toString());
-		if (energy <= 0) {
-			return;
-		}
+		uint32 newEnergyVal = (uint64) Long::valueOf(args->get(0).toString());
 
-		ManagedReference<SceneObject*> object = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> object = suiBox->getUsingObject();
 
-		if (object == nullptr || !object->isInstallationObject())
+		if (object == NULL || !object->isInstallationObject())
 			return;
 
 		InstallationObject* installation = cast<InstallationObject*>( object.get());
@@ -48,6 +44,7 @@ public:
 		Locker _lock(installation, player);
 
 		uint32 energyFromPlayer = resourceManager->getAvailablePowerFromPlayer(player);
+		uint32 energy = energyFromPlayer - newEnergyVal;
 
 		if (energy > energyFromPlayer)
 			return;

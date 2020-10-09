@@ -45,8 +45,6 @@ public:
 		GUILD_WAR_LIST                     = 38,
 		GUILD_WAR_ENTER_NAME               = 39,
 		GUILD_TAKE_LOTS                    = 40,
-		GUILD_VOTE                         = 41,
-		GUILD_ELECTION_STANDING            = 42,
 
 
 		//Travel 51 - 60
@@ -133,11 +131,6 @@ public:
 		ADMIN_UNBAN_SUMMARY                = 180,
 		ADMIN_PLAYER_CREDITS               = 181,
 		ADMIN_FIND_OBJECT                  = 182,
-		ADMIN_GUILDINFO                    = 183,
-		ADMIN_JEDILIST                     = 184,
-		ADMIN_LIST                     	   = 185,
-		ADMIN_FIND_PLAYER                  = 186,
-		ADMIN_FRSLIST                  	   = 187,
 
 		//Teach 221 - 230
 		TEACH_SKILL                        = 221,
@@ -166,8 +159,8 @@ public:
 		//Fishing 271 - 280
 		FISHING                            = 271,
 
-		// FRS
-		ENCLAVE_VOTING					   = 281,
+		//Junk Dealer 281 - 290
+		JUNK_DEALER_SELL_LIST              = 281,
 
 		//Medic 291 - 300
 		MEDIC_CONSENT                      = 291,
@@ -185,23 +178,6 @@ public:
 
 		// Reaction Fines
 		REACTION_FINE                      = 331,
-
-		// Growable Plant
-		GROWABLE_PLANT					   = 341,
-
-		// Lottery Droid
-		LOTTERY_DURATION_SETUP			   = 351,
-		LOTTERY_PAYOUT_SETUP			   = 352,
-		LOTTERY_COST_SETUP				   = 353,
-		LOTTERY_ADD_CREDITS				   = 354,
-		LOTTERY_ADD_CREDITS_CONFIRM		   = 355,
-		LOTTERY_INFO					   = 356,
-		LOTTERY_REGISTRATION			   = 357,
-
-		// Scavenger Droid
-		SCAVENGER_INFO					   = 370,
-		SCAVENGER_ITEM_LIST				   = 371,
-
 
 		// Ranger 400 - 401
 		RANGER_TRACK_OPTIONS               = 400,
@@ -226,9 +202,6 @@ public:
 		GROUP_LOOT_PICK_LOOTER             = 513,
 		GROUP_LOOT_LOTTERY                 = 514,
 
-		//Contraband Scan 521-530
-		CONTRABAND_SCAN_FINE               = 521,
-
 		//Miscellaneous 1000+
 		OBJECT_NAME                        = 1000,
 		FINDSESSION                        = 1001,
@@ -244,7 +217,7 @@ public:
 		VENDOR_CUSTOM_PHRASE               = 1011,
 		VENDOR_ANIMATION                   = 1012,
 		COLOR_GOGGLES                      = 1013,
-		COLOR_ARMOR                        = 1014,
+		COLOR_ARMOR                        = 1014,	
 		CUSTOMIZE_KIT                      = 1015, // listbox to select FRAME or TRIM
 		MOUNT_GROWTH_ARREST                = 1016,
 		HOLO_EMOTE_HELP                    = 1017,
@@ -268,12 +241,7 @@ public:
 		DROID_EDIT_ASSIGNED_STRUCTURES     = 1034,
 		DROID_MAINTENANCE_RUN_LIST         = 1035,
 		DROID_ADD_STRUCTURE_AMOUNT         = 1036,
-		PET_FIX_DIALOG					   = 1037,
-		JUKEBOX_SELECTION				   = 1038,
-		SHUTTLE_BEACON					   = 1039,
-		FIELD_FACTION_CHANGE			   = 1040,
-		GOTO_LIST						   = 1041,
-		FS_EXP_CONVERT 					   = 1042
+		PET_FIX_DIALOG					   = 1037
 	};
 };
 

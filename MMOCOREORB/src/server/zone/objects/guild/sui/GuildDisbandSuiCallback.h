@@ -19,17 +19,15 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isMessageBox() || cancelPressed)
 			return;
 
 		ManagedReference<GuildManager*> guildManager = server->getGuildManager();
 
-		ManagedReference<SceneObject*> obj = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = suiBox->getUsingObject();
 
-		if (obj == nullptr || !obj->isTerminal())
+		if (obj == NULL || !obj->isTerminal())
 			return;
 
 		Terminal* terminal = cast<Terminal*>( obj.get());
@@ -37,9 +35,9 @@ public:
 		if (!terminal->isGuildTerminal())
 			return;
 
-		ManagedReference<GuildObject*> guild = player->getGuildObject().get();
+		ManagedReference<GuildObject*> guild = player->getGuildObject();
 
-		if (guild == nullptr)
+		if (guild == NULL)
 			return;
 
 		Locker guildLocker(guild, player);

@@ -1,178 +1,113 @@
 /*
-				Copyright <SWGEmu>
-		See file COPYING for copying conditions.*/
+ * ForceHealQueueCommand.h
+ *
+ *  Created on: Mar 15, 2014
+ *      Author: swgemu
+ */
 
 #ifndef FORCEHEALQUEUECOMMAND_H_
 #define FORCEHEALQUEUECOMMAND_H_
 
-#include "JediQueueCommand.h"
 
-class ForceHealQueueCommand : public JediQueueCommand {
-public:
-	// Introducing our own enums since those will support being used in bitsets
-	enum {
-		HEALTH = 1,
-		STRENGTH = 2,
-		CONSTITUTION = 4,
-		ACTION = 8,
-		QUICKNESS = 16,
-		STAMINA = 32,
-		MIND = 64,
-		FOCUS = 128,
-		WILLPOWER = 256,
-		BATTLE_FATIGUE = 512
-	};
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/chat/ChatManager.h"
+#include "server/zone/managers/stringid/StringIdManager.h"
+#include "QueueCommand.h"
 
-	enum {
-		STUN = 1,
-		DIZZY = 2,
-		BLIND = 4,
-		INTIMIDATE = 8,
-	};
-
-	enum {
-		DISEASED = 1,
-		POISONED = 2,
-		BLEEDING = 4,
-		ONFIRE   = 8
-	};
-
-	enum {
-		HEAL_DAMAGE,
-		HEAL_WOUNDS,
-		HEAL_STATES,
-		HEAL_BLEEDING,
-		HEAL_POISON,
-		HEAL_DISEASE,
-		HEAL_FIRE,
-		HEAL_FATIGUE
-	};
-
-	// these two enums are used for skills that allow healing on self and
-	// others.
-	enum {
-		TARGET_AUTO = 0, // go by range !=0 for ranged / this is default
-		TARGET_SELF = 1,
-		TARGET_OTHER = 2
-	};
+class ForceHealQueueCommand : public QueueCommand {
 protected:
-	int speed;
-	unsigned int allowedTarget;
-	float forceCostMultiplier; // Value to be added to base force cost per point healed
-
-	int statesToHeal; // bitmask of states to heal (STUN | DIZZY | BLINDED | INITIMDATED )
-	int healStateCost; // Cost per state healed
-
-	int healDiseaseCost; // > 0 heals given amount of dot damage
-	int healPoisonCost; // > 0 heals given amount of poison
-	int healBleedingCost; // > 0 heals given amount of bleeds
-	int healFireCost; // > 0 heals given amount of fire dot
-
-	int attributesToHeal; // bitmask of which attributes to heal, HEALTH etc..
-	int woundAttributesToHeal; // bitmask of which attributes to heal, HEALTH etc..
-
-	int healBattleFatigue; // amount of BF to heal
-	int healAmount; // amount to heal (HAM pools)
-	int healWoundAmount; // amount of wounds to heal
-
-	int bleedHealIterations;
-	int poisonHealIterations;
-	int diseaseHealIterations;
-	int fireHealIterations;
-
-	int range; // range to heal up to, if <= 0 it heals the user
+	float forceCost;
 
 public:
-	ForceHealQueueCommand(const String& name, ZoneProcessServer* server);
+	ForceHealQueueCommand(const String& name, ZoneProcessServer* server)
+: QueueCommand(name, server) {
+		forceCost = 0;
+	}
 
-	void sendHealMessage(CreatureObject* creature, CreatureObject* target, int healType, int healSpec, int amount) const;
+	void doAnimations(CreatureObject* creature, CreatureObject* creatureTarget) const {
 
-	int runCommandWithTarget(CreatureObject* creature, CreatureObject* targetCreature) const;
+		if (creature == creatureTarget)
+			creature->playEffect("clienteffect/pl_force_heal_self.cef", "");
+		else
+			creature->doCombatAnimation(creatureTarget,STRING_HASHCODE("force_healing_1"),0,0xFF);
+	}
 
-	int runCommand(CreatureObject* creature, CreatureObject* targetCreature) const;
+	bool checkForceCost(CreatureObject* creature) const {
+		ManagedReference<PlayerObject*> playerObject = creature->getPlayerObject();
 
-	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const override;
+		if (playerObject != NULL) {
+			if (playerObject->getForcePower() < forceCost) {
+				return false;
+			}
+			return true;
+		}
+		return false;
+	}
 
-	bool isForceHealCommand() const override {
+	void sendHealMessage(CreatureObject* object, CreatureObject* target, int healthDamage, int actionDamage, int mindDamage) const {
+		if (!object->isPlayerCreature())
+			return;
+
+		if (!target->isPlayerCreature())
+			return;
+
+		CreatureObject* creature = cast<CreatureObject*>( object);
+		CreatureObject* creatureTarget = cast<CreatureObject*>( target);
+
+		StringBuffer msgPlayer, msgTarget, msgBody, msgTail;
+
+		if (healthDamage > 0 && actionDamage > 0 && mindDamage > 0) {
+			msgBody << healthDamage << " health, " << actionDamage << " action, and "  << mindDamage << " mind";
+		} else if (healthDamage > 0) {
+			msgBody << healthDamage << " health";
+		} else if (actionDamage > 0) {
+			msgBody << actionDamage << " action";
+		} else if (mindDamage > 0) {
+			msgBody << mindDamage << " mind";
+		} else {
+			creature->sendSystemMessage("@jedi_spam:no_damage_heal_other"); //Your target has no damage of that type to heal.
+			return;
+		}
+
+		msgTail << " damage.";
+
+			msgPlayer << "You heal " << creatureTarget->getFirstName() << " for " << msgBody.toString() << msgTail.toString(); // You heal %TT for %DI points of %TO.
+			msgTarget << "You are healed for " << msgBody.toString() << " points of damage by " << creature->getFirstName(); // You are healed for %DI points of %TO by %TT.
+
+			creature->sendSystemMessage(msgPlayer.toString());
+			creatureTarget->sendSystemMessage(msgTarget.toString());
+
+	}
+
+	int healBattleFatigue(CreatureObject* creature, int damage) const {
+
+		int currentValue = creature->getShockWounds();
+
+		int healedValue = MIN(currentValue, damage);
+
+		creature->addShockWounds(-healedValue, true, false);
+
+		return healedValue;
+
+	}
+
+	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
+
+		return SUCCESS;
+	}
+
+	bool isForceHealCommand() {
 		return true;
 	}
 
-	void setForceCostMultiplier(float fcm) {
-		forceCostMultiplier = fcm;
+	void setForceCost(int fpc) {
+		forceCost = fpc;
 	}
 
-	void setHealStateCost(unsigned int cost) {
-		healStateCost = cost;
+	float getCommandDuration(CreatureObject* object, const UnicodeString& arguments) const {
+		return defaultTime * 3.0;
 	}
-
-	void setStatesToHeal(unsigned int states) {
-		statesToHeal = states;
-	}
-
-	void setHealDiseaseCost(unsigned int cost) {
-		healDiseaseCost = cost;
-	}
-
-	void setHealPoisonCost(unsigned int cost) {
-		healPoisonCost = cost;
-	}
-
-	void setHealBleedingCost(unsigned int cost) {
-		healBleedingCost = cost;
-	}
-
-	void setHealFireCost(unsigned int cost) {
-		healFireCost = cost;
-	}
-
-	void setAttributesToHeal(unsigned int attributes) {
-		attributesToHeal = attributes;
-	}
-
-	void setWoundAttributesToHeal(unsigned int attributes) {
-		woundAttributesToHeal = attributes;
-	}
-
-	void setHealBattleFatigue(unsigned int amount) {
-		healBattleFatigue = amount;
-	}
-
-	void setHealAmount(unsigned int amount ) {
-		healAmount = amount;
-	}
-
-	void setHealWoundAmount(unsigned int amount) {
-		healWoundAmount = amount;
-	}
-
-	void setBleedHealIterations(unsigned int amount) {
-		bleedHealIterations = amount;
-	}
-
-	void setPoisonHealIterations(unsigned int amount) {
-		poisonHealIterations = amount;
-	}
-
-	void setDiseaseHealIterations(unsigned int amount) {
-		diseaseHealIterations = amount;
-	}
-
-	void setFireHealIterations(unsigned int amount) {
-		fireHealIterations = amount;
-	}
-
-	void setRange(int r) {
-		range = r;
-	}
-
-	void setSpeed(int s) {
-		speed = s;
-	}
-
-	void setAllowedTarget(unsigned int t) {
-		allowedTarget = t;
-	}
-
 };
+
 
 #endif /* FORCEHEALQUEUECOMMAND_H_ */

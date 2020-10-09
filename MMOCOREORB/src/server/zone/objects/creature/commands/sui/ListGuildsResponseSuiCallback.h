@@ -17,9 +17,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox() || cancelPressed)
 			return;
 
@@ -40,7 +38,7 @@ public:
 
 		ManagedReference<SceneObject*> obj = server->getObject(guildObjectID);
 
-		if (obj == nullptr || !obj->isGuildObject())
+		if (obj == NULL || !obj->isGuildObject())
 			return;
 
 		GuildObject* guild = cast<GuildObject*>( obj.get());

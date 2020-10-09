@@ -5,13 +5,14 @@
 #ifndef SABER1HFLURRYCOMMAND_H_
 #define SABER1HFLURRYCOMMAND_H_
 
-#include "JediCombatQueueCommand.h"
+#include "server/zone/objects/scene/SceneObject.h"
+#include "CombatQueueCommand.h"
 
-class Saber1hFlurryCommand : public JediCombatQueueCommand {
+class Saber1hFlurryCommand : public CombatQueueCommand {
 public:
 
 	Saber1hFlurryCommand(const String& name, ZoneProcessServer* server)
-		: JediCombatQueueCommand(name, server) {
+		: CombatQueueCommand(name, server) {
 
 	}
 

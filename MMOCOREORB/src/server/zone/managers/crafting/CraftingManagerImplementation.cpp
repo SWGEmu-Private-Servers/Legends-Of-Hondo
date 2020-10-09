@@ -3,6 +3,8 @@
 		See file COPYING for copying conditions. */
 
 #include "server/zone/managers/crafting/CraftingManager.h"
+#include "server/zone/objects/resource/ResourceContainer.h"
+#include "server/zone/objects/manufactureschematic/ingredientslots/ResourceSlot.h"
 #include "server/zone/managers/crafting/labratories/SharedLabratory.h"
 #include "server/zone/managers/crafting/labratories/ResourceLabratory.h"
 #include "server/zone/managers/crafting/labratories/GeneticLabratory.h"
@@ -11,11 +13,8 @@
 void CraftingManagerImplementation::initialize() {
 	schematicMap = SchematicMap::instance();
 	schematicMap->initialize(zoneServer.get());
+	loadBioSkillMods();
 	configureLabratories();
-}
-
-void CraftingManagerImplementation::stop() {
-	schematicMap = nullptr;
 }
 
 void CraftingManagerImplementation::awardSchematicGroup(PlayerObject* playerObject, Vector<String>& schematicgroups, bool updateClient) {
@@ -48,11 +47,38 @@ int CraftingManagerImplementation::calculateExperimentationFailureRate(CreatureO
 
 	// Get Experimentation skill
 	String expSkill = manufactureSchematic->getDraftSchematic()->getExperimentationSkill();
-	float expPoints = player->getSkillMod(expSkill) / 10.0f;
+	float expPoints = player->getSkillMod(expSkill);
 
 	int failure = int((50.0f + (ma - 500.0f) / 40.0f + expPoints - 5.0f * float(pointsUsed)));
 
 	return failure;
+}
+
+// Legend of Hondo - return price of crafted item for use in junk dealer sales
+int CraftingManagerImplementation::calculateFinalJunkValue(CreatureObject* player, ManufactureSchematic* manufactureSchematic) {
+	SharedLabratory* lab = labs.get(manufactureSchematic->getLabratory());
+	// Get the junk value based on quantity used and OQ/DR
+	float junkValue = lab->getJunkValue(manufactureSchematic);
+
+	// Calculate luck based on experimentation skill
+	String expSkill = manufactureSchematic->getDraftSchematic()->getExperimentationSkill();
+	float playerSkill = float(player->getSkillMod(expSkill)) / 800.0f + 1.0f;
+	if (playerSkill > 120)
+		playerSkill = 120.0f;
+	float luck = (float(System::random(49)) + 1.0f)/ 1000.0f + 1.0f; 
+
+	float finalValue = junkValue * playerSkill * luck;
+
+	Logger::console.info("playerSkill: " + String::valueOf(playerSkill), true);
+	Logger::console.info("luck: " + String::valueOf(luck), true);
+	Logger::console.info("finalValue: " + String::valueOf(finalValue), true);
+	
+	return int(finalValue);
+}
+
+bool CraftingManagerImplementation::allowManufactureSchematic(ManufactureSchematic* manufactureSchematic) {
+	SharedLabratory* lab = labs.get(manufactureSchematic->getLabratory());
+	return lab->allowFactoryRun(manufactureSchematic);
 }
 
 int CraftingManagerImplementation::getCreationCount(ManufactureSchematic* manufactureSchematic) {
@@ -65,15 +91,10 @@ int CraftingManagerImplementation::calculateExperimentationSuccess(CreatureObjec
 
 	float cityBonus = player->getSkillMod("private_spec_experimentation");
 
-	int experimentationSkill = player->getSkillMod(draftSchematic->getExperimentationSkill());
-	int forceSkill = player->getSkillMod("force_experimentation");
-	experimentationSkill += forceSkill;
-
-	float experimentingPoints = ((float)experimentationSkill) / 10.0f;
+	// assemblyPoints is 0-12
+	float experimentingPoints = ((float)player->getSkillMod(draftSchematic->getExperimentationSkill())) / 10.0f;
 
 	int failMitigate = (player->getSkillMod(draftSchematic->getAssemblySkill()) - 100 + cityBonus) / 7;
-	failMitigate += player->getSkillMod("force_failure_reduction");
-
 	if(failMitigate < 0)
 		failMitigate = 0;
 	if(failMitigate > 5)
@@ -83,11 +104,12 @@ int CraftingManagerImplementation::calculateExperimentationSuccess(CreatureObjec
 	float toolModifier = 1.0f + (effectiveness / 100.0f);
 
 	//Bespin Port
+
 	float expbonus = 0;
 	if (player->hasBuff(BuffCRC::FOOD_EXPERIMENT_BONUS)) {
 		Buff* buff = player->getBuff(BuffCRC::FOOD_EXPERIMENT_BONUS);
 
-		if (buff != nullptr) {
+		if (buff != NULL) {
 			expbonus = buff->getSkillModifierValue("experiment_bonus");
 			toolModifier *= 1.0f + (expbonus / 100.0f);
 		}
@@ -96,7 +118,7 @@ int CraftingManagerImplementation::calculateExperimentationSuccess(CreatureObjec
 	/// Range 0-100
 	int luckRoll = System::random(100) + cityBonus;
 
-	if(luckRoll > ((95 - expbonus) - forceSkill))
+	if(luckRoll > (95 - expbonus))
 		return AMAZINGSUCCESS;
 
 	if(luckRoll < (5 - expbonus - failMitigate))
@@ -164,23 +186,61 @@ void CraftingManagerImplementation::experimentRow(ManufactureSchematic* schemati
 	lab->experimentRow(craftingValues,rowEffected,pointsAttempted,failure,experimentationResult);
 }
 
+bool CraftingManagerImplementation::loadBioSkillMods() {
+	Reference<Lua* > lua = new Lua();
+	lua->init();
+
+	if (!lua->runFile("scripts/managers/crafting/bio_skill_mods.lua")) {
+		return false;
+	}
+
+	LuaObject bioModsTable = lua->getGlobalObject("bioSkillMods");
+
+	if (!bioModsTable.isValidTable())
+		return false;
+
+	for (int i = 1; i <= bioModsTable.getTableSize(); ++i) {
+		String mod = bioModsTable.getStringAt(i);
+		bioMods.put(mod);
+	}
+
+	bioModsTable.pop();
+
+	return true;
+
+}
+
+String CraftingManagerImplementation::checkBioSkillMods(const String& property) {
+
+	for (int l = 0; l < bioMods.size(); ++l) {
+
+		String key = bioMods.elementAt(l);
+		String statname = "cat_skill_mod_bonus.@stat_n:" + key;
+
+		if (property == statname) {
+			return key;
+		}
+	}
+
+	return "";
+}
+
 void CraftingManagerImplementation::configureLabratories() {
 	ResourceLabratory* resLab = new ResourceLabratory();
 	resLab->initialize(zoneServer.get());
-	
-	labs.put(static_cast<int>(DraftSchematicObjectTemplate::RESOURCE_LAB),resLab); //RESOURCE_LAB
+	labs.put(static_cast<int>(RESOURCE_LAB),resLab); //RESOURCE_LAB
 
 	GeneticLabratory* genLab = new GeneticLabratory();
 	genLab->initialize(zoneServer.get());
-	labs.put(static_cast<int>(DraftSchematicObjectTemplate::GENETIC_LAB), genLab); //GENETIC_LAB
+	labs.put(static_cast<int>(GENETIC_LAB), genLab); //GENETIC_LAB
 
 	DroidLabratory* droidLab = new DroidLabratory();
 	droidLab->initialize(zoneServer.get());
-	labs.put(static_cast<int>(DraftSchematicObjectTemplate::DROID_LAB), droidLab); //DROID_LAB
+	labs.put(static_cast<int>(DROID_LAB), droidLab); //DROID_LAB
 
 }
 void CraftingManagerImplementation::setInitialCraftingValues(TangibleObject* prototype, ManufactureSchematic* manufactureSchematic, int assemblySuccess) {
-	if(manufactureSchematic == nullptr || manufactureSchematic->getDraftSchematic() == nullptr)
+	if(manufactureSchematic == NULL || manufactureSchematic->getDraftSchematic() == NULL)
 		return;
 	int labratory = manufactureSchematic->getLabratory();
 	SharedLabratory* lab = labs.get(labratory);

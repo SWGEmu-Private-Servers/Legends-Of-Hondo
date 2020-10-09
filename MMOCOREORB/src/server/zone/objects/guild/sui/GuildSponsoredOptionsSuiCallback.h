@@ -14,9 +14,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox() || cancelPressed)
 			return;
 
@@ -27,12 +25,12 @@ public:
 
 		ManagedReference<GuildManager*> guildManager = server->getGuildManager();
 
-		if (guildManager == nullptr)
+		if (guildManager == NULL)
 			return;
 
-		ManagedReference<SceneObject*> obj = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = suiBox->getUsingObject();
 
-		if (obj == nullptr || !obj->isTerminal())
+		if (obj == NULL || !obj->isTerminal())
 			return;
 
 		Terminal* terminal = cast<Terminal*>( obj.get());
@@ -40,26 +38,23 @@ public:
 		if (!terminal->isGuildTerminal())
 			return;
 
+		ManagedReference<GuildObject*> guild = player->getGuildObject();
+
+		if (guild == NULL || !guild->hasAcceptPermission(player->getObjectID())) {
+			player->sendSystemMessage("@guild:generic_fail_no_permission"); //You do not have permission to perform that operation.
+			return;
+		}
+
 		SuiListBox* listBox = cast<SuiListBox*>( suiBox);
 
 		uint64 playerID = listBox->getMenuObjectID(index);
-
-		ManagedReference<GuildObject*> guild = player->getGuildObject().get();
-
-		if (guild == nullptr || !guild->hasAcceptPermission(player->getObjectID()) || !guild->hasSponsoredPlayer(playerID)) {
-			player->sendSystemMessage("@guild:generic_fail_no_permission"); // You do not have permission to perform that operation.
-			return;
-		}
 
 		//Whether they accept, or decline, we are removing them from the sponsored list.
 		guild->removeSponsoredPlayer(playerID);
 		guildManager->removeSponsoredPlayer(playerID);
 
-		if (index == 0) { //If they accepted, then ...
+		if (index == 0) //If they accepted, then ...
 			guildManager->acceptSponsoredPlayer(player, playerID);
-		} else {
-			guildManager->declineSponsoredPlayer(player, playerID);
-		}
 	}
 };
 

@@ -5,7 +5,7 @@
 #ifndef DROIDPOWERTASK_H_
 #define DROIDPOWERTASK_H_
 
-#include "server/zone/objects/creature/ai/DroidObject.h"
+#include "server/zone/objects/creature/DroidObject.h"
 
 namespace server {
 namespace zone {
@@ -15,7 +15,7 @@ namespace events {
 
 class DroidPowerTask : public Task {
 
-	ManagedWeakReference<DroidObject*> droid;
+	ManagedReference<DroidObject*> droid;
 
 public:
 	DroidPowerTask(DroidObject* droid) : Task() {
@@ -23,31 +23,30 @@ public:
 	}
 
 	void run() {
-		ManagedReference<DroidObject*> strongDroid = droid.get();
 
-		if( strongDroid == nullptr )
+		if( droid == NULL )
 			return;
 
-		Locker locker(strongDroid);
+		Locker locker(droid);
 
-		strongDroid->removePendingTask("droid_power");
+		droid->removePendingTask("droid_power");
 
 		// Check if droid is spawned
-		if( strongDroid->getLocalZone() == nullptr ){  // Not outdoors
+		if( droid->getLocalZone() == NULL ){  // Not outdoors
 
-			ManagedReference<SceneObject*> parent = strongDroid->getParent().get();
-			if( parent == nullptr || !parent.get()->isCellObject() ){ // Not indoors either
+			ManagedWeakReference<SceneObject*> parent = droid->getParent();
+			if( parent == NULL || !parent.get()->isCellObject() ){ // Not indoors either
 				return;
 			}
 		}
 
 		// Consume power if available
-		if ( strongDroid->hasPower() ) {
-			strongDroid->usePower(4);
-			strongDroid->runModulePowerDrain();
+		if ( droid->hasPower() ) {
+			droid->usePower(4);
+			droid->runModulePowerDrain();
 		}
 
-		strongDroid->addPendingTask("droid_power", this, 120000); // 2 min
+		reschedule( 120000 ); // 2 min
 	}
 };
 

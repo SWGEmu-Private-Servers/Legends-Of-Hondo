@@ -5,6 +5,7 @@
  *      Author: victor
  */
 
+#include "ObjectControllerMessage.h"
 #include "ObjectMenuResponse.h"
 #include "server/zone/managers/radial/RadialManager.h"
 
@@ -114,7 +115,7 @@ public:
 			}
 		} catch (const Exception& e) {
 			/*delete menuResponse;
-			menuResponse = nullptr;*/
+			menuResponse = NULL;*/
 
 			throw e;
 		}
@@ -124,18 +125,18 @@ public:
 		counter = message->parseByte();
 		//menuResponse->setCounter(counter);
 
-		/*CreatureObject* player = client->getPlayer();
+		/*SceneObject* player = client->getPlayer();
 
-		if (player != nullptr)
+		if (player != NULL)
 			player->info("received object menu request");*/
 
 	}
 
 	void run() {
 		//menuResponse->setCounter(counter);
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> player = cast<CreatureObject*>(client->getPlayer().get().get());
 
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
 		Reference<ObjectMenuResponse*> menuResponse = new ObjectMenuResponse(player, objectID, 0);
@@ -148,5 +149,6 @@ public:
 
 		RadialManager* radialManager = server->getZoneServer()->getRadialManager();
 		radialManager->handleObjectMenuRequest(player, menuResponse, objectID);
+
 	}
 };

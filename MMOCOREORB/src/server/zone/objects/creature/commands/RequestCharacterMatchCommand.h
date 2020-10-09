@@ -40,14 +40,14 @@ public:
 
 		ManagedReference<Zone*> zone = creature->getZone();
 
-		if (zone != nullptr) {
-			SortedVector<QuadTreeEntry*> closeObjects;
+		if (zone != NULL) {
+			SortedVector<ManagedReference<QuadTreeEntry*> > closeObjects;
 			CloseObjectsVector* actualCloseObjects = (CloseObjectsVector*) creature->getCloseObjects();
 
-			if (actualCloseObjects != nullptr) {
-				actualCloseObjects->safeCopyReceiversTo(closeObjects, CloseObjectsVector::CREOTYPE);
+			if (actualCloseObjects != NULL) {
+				actualCloseObjects->safeCopyTo(closeObjects);
 			} else {
-				zone->getInRangeObjects(creature->getWorldPositionX(), creature->getWorldPositionY(), ZoneServer::CLOSEOBJECTRANGE, &closeObjects, true);
+				zone->getInRangeObjects(creature->getWorldPositionX(), creature->getWorldPositionY(), 192, &closeObjects, true);
 			}
 
 			PlayersNearYouMessage* pny = new PlayersNearYouMessage(creature);
@@ -56,12 +56,12 @@ public:
 			if (!closeObjects.isEmpty()) {
 				String guildName, charName;
 				for (int i = 0; i < closeObjects.size(); ++i) {
-					SceneObject* obj = cast<SceneObject*>(closeObjects.get(i));
-					if (obj != nullptr && (obj->isPlayerCreature() || (obj->isMount() || obj->isVehicleObject()))) {
+					SceneObject* obj = cast<SceneObject*>(closeObjects.get(i).get());
+					if (obj != NULL && (obj->isPlayerCreature() || (obj->isMount() || obj->isVehicleObject()))) {
 						ManagedReference<CreatureObject*> playerCreature;
 						if (obj->isMount() || obj->isVehicleObject()) {
 							SceneObject* rider = obj->getSlottedObject("rider");
-							if (rider == nullptr)
+							if (rider == NULL)
 								continue;
 
 							playerCreature = cast<CreatureObject*>(rider);
@@ -70,14 +70,12 @@ public:
 
 						PlayerObject* ghost = playerCreature->getPlayerObject();
 
-						if (ghost == nullptr || ghost->isAnonymous())
+						if (ghost == NULL || ghost->isAnonymous())
 							continue;
 
 						guildName = "";
-						if (playerCreature->isInGuild()) {
-							ManagedReference<GuildObject*> guild = playerCreature->getGuildObject().get();
-							guildName = guild->getGuildName().toLowerCase();
-						}
+						if (playerCreature->isInGuild())
+							guildName = playerCreature->getGuildObject()->getGuildName().toLowerCase();
 
 						charName = playerCreature->getDisplayedName().toLowerCase();
 
@@ -85,7 +83,7 @@ public:
 							continue;
 
 						// Don't allow non privileged characters to search for admin skills
-						if (profession.contains("admin") && !ghost->hasGodMode())
+						if (profession.contains("admin") && !ghost->isPrivileged())
 							continue;
 
 						// Dont show invisible admins

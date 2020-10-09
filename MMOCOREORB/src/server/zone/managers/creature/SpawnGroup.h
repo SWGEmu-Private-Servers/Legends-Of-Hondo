@@ -8,6 +8,7 @@
 #ifndef SPAWNGROUP_H_
 #define SPAWNGROUP_H_
 
+#include "engine/engine.h"
 #include "LairSpawn.h"
 
 namespace server {
@@ -19,18 +20,13 @@ class SpawnGroup : public Object {
 protected:
 	String templateName;
 
-	int minLevelCeiling;
-
 	Vector<Reference<LairSpawn*> > spawnList;
 
 public:
-	SpawnGroup() {
-		minLevelCeiling = 20;
-	}
+	SpawnGroup() {}
 
 	SpawnGroup(const String& tempName, LuaObject& group) {
 		templateName = tempName;
-		minLevelCeiling = group.getIntField("minLevelCeiling");
 
 		LuaObject lairSpawns = group.getObjectField("lairSpawns");
 
@@ -55,7 +51,6 @@ public:
 	SpawnGroup(const SpawnGroup& gr) : Object() {
 		templateName = gr.templateName;
 		spawnList = gr.spawnList;
-		minLevelCeiling = gr.minLevelCeiling;
 	}
 
 	virtual ~SpawnGroup() {}
@@ -66,26 +61,22 @@ public:
 
 		templateName = gr.templateName;
 		spawnList = gr.spawnList;
-		minLevelCeiling = gr.minLevelCeiling;
 
 		return *this;
 	}
 
-	const String& getTemplateName() const {
+	String getTemplateName() const {
 		return templateName;
 	}
 
-	const Vector<Reference<LairSpawn*> >& getSpawnList() {
-		return spawnList;
+	Vector<Reference<LairSpawn*> >* getSpawnList() {
+		return &spawnList;
 	}
 
-	void setTemplateName(const String& templateName) {
+	void setTemplateName(String templateName) {
 		this->templateName = templateName;
 	}
 
-	int getMinLevelCeiling() const {
-		return minLevelCeiling;
-	}
 };
 
 }

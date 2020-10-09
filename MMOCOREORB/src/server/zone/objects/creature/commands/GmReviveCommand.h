@@ -24,7 +24,7 @@ public:
 
 		try {
 			StringTokenizer args(arguments.toString());
-			ManagedReference<CreatureObject*> patient = nullptr;
+			ManagedReference<CreatureObject*> patient = NULL;
 
 			ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(creature->getTargetID());
 
@@ -32,11 +32,11 @@ public:
 
 			if (!args.hasMoreTokens()) { // No arguments passed
 
-				if (object != nullptr && (object->isPlayerCreature() || object->isPet())) { // Target is a player or pet, rez target
+				if (object != NULL && (object->isPlayerCreature() || object->isPet())) { // Target is a player or pet, rez target
 					patient = cast<CreatureObject*>( object.get());
 					revivePatient(creature, patient);
 
-				} else if (object == nullptr) { // No target, rez self
+				} else if (object == NULL) { // No target, rez self
 					patient = creature;
 					revivePatient(creature, patient);
 
@@ -49,9 +49,7 @@ public:
 
 				String firstArg;
 				String firstName = "";
-				String modName = "";
 				bool buff = false;
-				bool skillmod = false;
 				args.getStringToken(firstArg);
 
 				if (firstArg.toLowerCase() == "buff") { // First argument is buff, get second argument
@@ -59,12 +57,6 @@ public:
 					if (args.hasMoreTokens())
 						args.getStringToken(firstName);
 
-				} else if (firstArg.toLowerCase() == "skillmod") {
-					skillmod = true;
-					if (args.hasMoreTokens())
-						args.getStringToken(modName);
-					else
-						return GENERALERROR;
 				} else { // First argument is not buff, must be a name or area
 					firstName = firstArg;
 				}
@@ -100,26 +92,24 @@ public:
 							args.getStringToken(faction);
 						}
 
-						SortedVector<QuadTreeEntry*> closeObjects;
+						SortedVector<ManagedReference<QuadTreeEntry*> > closeObjects;
 						Zone* zone = creature->getZone();
 
-						if (creature->getCloseObjects() == nullptr) {
-#ifdef COV_DEBUG
+						if (creature->getCloseObjects() == NULL) {
 							creature->info("Null closeobjects vector in GmReviveCommand::doQueueCommand", true);
-#endif
 							zone->getInRangeObjects(creature->getPositionX(), creature->getPositionY(), range, &closeObjects, true);
 						} else {
 							CloseObjectsVector* closeVector = (CloseObjectsVector*) creature->getCloseObjects();
-							closeVector->safeCopyReceiversTo(closeObjects, CloseObjectsVector::CREOTYPE);
+							closeVector->safeCopyTo(closeObjects);
 						}
 
 						for (int i = 0; i < closeObjects.size(); ++i) {
-							SceneObject* sceneObject = static_cast<SceneObject*>(closeObjects.get(i));
+							SceneObject* sceneObject = cast<SceneObject*>(closeObjects.get(i).get());
 
 							if ((sceneObject->isPlayerCreature() || sceneObject->isPet()) && creature->isInRange(sceneObject, range)) {
 								ManagedReference<CreatureObject*> patientObject = cast<CreatureObject*>(sceneObject);
 
-								if (patientObject != nullptr) {
+								if (patientObject != NULL) {
 									if (faction == "" || faction.hashCode() == patientObject->getFaction() || (faction == "neutral" && patientObject->getFaction() == 0)) {
 										if (buff) {
 											Locker clocker(patientObject, creature);
@@ -143,7 +133,7 @@ public:
 					} else { // Not area
 						patient = server->getZoneServer()->getChatManager()->getPlayer(firstName);
 
-						if (patient != nullptr) {
+						if (patient != NULL) {
 							if (buff) {
 								Locker clocker(patient, creature);
 								pm->enhanceCharacter(patient);
@@ -157,7 +147,7 @@ public:
 
 				} else if (buff) {  // Buff was the only argument
 
-					if (object != nullptr && (object->isPlayerCreature() || object->isPet())) { // Target is a player or pet, buff target
+					if (object != NULL && (object->isPlayerCreature() || object->isPet())) { // Target is a player or pet, buff target
 						patient = cast<CreatureObject*>( object.get());
 						Locker clocker(patient, creature);
 
@@ -169,7 +159,7 @@ public:
 							creature->sendSystemMessage(patient->getDisplayedName() + " has been enhanced.");
 						}
 
-					} else if (object == nullptr) { // No target, buff self
+					} else if (object == NULL) { // No target, buff self
 						pm->enhanceCharacter(creature);
 
 					} else { // Target is not a player or pet
@@ -177,13 +167,6 @@ public:
 						return INVALIDTARGET;
 					}
 
-				} else if (skillmod) {
-					if (object != nullptr && object->isPlayerCreature()) {
-						patient = cast<CreatureObject*>(object.get());
-						Locker clocker(patient, creature);
-						patient->removeSkillMod(SkillModManager::BUFF, modName, patient->getSkillMod(modName), true);
-					} else
-						return INVALIDTARGET;
 				} else { // Shouldn't ever end up here
 					creature->sendSystemMessage("Syntax: /gmrevive [buff] [ [<name>] | [area [<range>] [imperial | rebel | neutral]] ]");
 					return INVALIDTARGET;
@@ -200,17 +183,6 @@ public:
 	void revivePatient(CreatureObject* creature, CreatureObject* patient) const {
 		Locker clocker(patient, creature);
 
-		ManagedReference<PlayerObject*> targetGhost = patient->getPlayerObject();
-
-		if (targetGhost != nullptr) {
-
-			if(targetGhost->getJediState() > 1)
-				targetGhost->setForcePower(targetGhost->getForcePowerMax());
-
-			if(patient->isDead())
-				targetGhost->removeSuiBoxType(SuiWindowType::CLONE_REQUEST);
-		}
-
 		patient->healDamage(creature, CreatureAttribute::HEALTH, 5000);
 		patient->healDamage(creature, CreatureAttribute::ACTION, 5000);
 		patient->healDamage(creature, CreatureAttribute::MIND, 5000);
@@ -223,13 +195,15 @@ public:
 
 		patient->clearDots();
 
-		patient->removeFeignedDeath();
-
 		patient->setPosture(CreaturePosture::UPRIGHT);
 
-		patient->notifyObservers(ObserverEventType::CREATUREREVIVED, creature, 0);
-
 		patient->broadcastPvpStatusBitmask();
+				
+		ManagedReference<PlayerObject*> targetGhost = patient->getPlayerObject();
+
+		if (targetGhost != NULL && targetGhost->getJediState() > 1){
+			targetGhost->setForcePower(targetGhost->getForcePowerMax());			
+		}		
 
 		if (patient->isPlayerCreature()) {
 			patient->sendSystemMessage("You have been restored.");

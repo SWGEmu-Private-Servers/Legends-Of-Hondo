@@ -29,14 +29,14 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> player = static_cast<CreatureObject*>(client->getPlayer().get().get());
 
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
 		ManagedReference<SceneObject*> invokedObject = server->getZoneServer()->getObject(terminalObjectID);
 
-		if (invokedObject == nullptr)
+		if (invokedObject == NULL)
 			return;
 
 		//This should be handled by the radial?

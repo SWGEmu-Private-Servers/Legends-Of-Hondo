@@ -5,8 +5,10 @@
 #ifndef BROADCASTGALAXYCOMMAND_H_
 #define BROADCASTGALAXYCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/ZoneServer.h"
 #include "server/chat/ChatManager.h"
+#include "server/zone/objects/player/PlayerObject.h"
 
 class BroadcastGalaxyCommand : public QueueCommand {
 public:
@@ -26,6 +28,12 @@ public:
 
 		if (!creature->isPlayerCreature())
 			return GENERALERROR;
+
+		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
+
+		//Check privileges
+		if (ghost == NULL || !ghost->isPrivileged())
+			return INSUFFICIENTPERMISSION;
 
 		StringTokenizer args(arguments.toString());
 

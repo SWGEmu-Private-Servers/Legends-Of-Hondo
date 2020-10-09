@@ -5,6 +5,8 @@
 #ifndef VENTRILOQUISMCOMMAND_H_
 #define VENTRILOQUISMCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+
 class VentriloquismCommand : public QueueCommand {
 public:
 
@@ -40,9 +42,9 @@ public:
 		effect << "clienteffect/entertainer_ventriloquism_level_" << dec << actionModifier << ".cef";
 
 		uint64 selectedTarget = creature->getTargetID();
- 		ManagedReference<CreatureObject*> targetCreature = server->getZoneServer()->getObject(selectedTarget).castTo<CreatureObject*>();
+ 		ManagedReference<CreatureObject*> targetCreature = server->getZoneServer()->getObject(selectedTarget).castTo<CreatureObject*>();;
 
- 		if(targetCreature == nullptr) {
+ 		if(targetCreature == NULL) {
 			creature->sendSystemMessage("@performance:effect_need_target");
 			return GENERALERROR;
 		}

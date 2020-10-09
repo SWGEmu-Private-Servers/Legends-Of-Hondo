@@ -16,15 +16,13 @@ public:
 
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
-		if (cancelPressed || player == nullptr)
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
+		if (cancelPressed || player == NULL)
 			return;
 
 		//Player clicked "Leave Group" on notification box.
 		ManagedReference<GroupObject*> group = player->getGroup();
-		if (group == nullptr)
+		if (group == NULL)
 			return;
 
 		GroupManager::instance()->leaveGroup(group.get(), player);

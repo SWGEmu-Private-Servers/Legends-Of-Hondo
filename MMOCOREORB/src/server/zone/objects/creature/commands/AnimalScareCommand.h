@@ -5,13 +5,13 @@
 #ifndef ANIMALSCARECOMMAND_H_
 #define ANIMALSCARECOMMAND_H_
 
-#include "server/zone/objects/creature/commands/JediQueueCommand.h"
+#include "server/zone/objects/scene/SceneObject.h"
 
-class AnimalScareCommand : public JediQueueCommand {
+class AnimalScareCommand : public QueueCommand {
 public:
 
 	AnimalScareCommand(const String& name, ZoneProcessServer* server)
-		: JediQueueCommand(name, server) {
+		: QueueCommand(name, server) {
 
 	}
 

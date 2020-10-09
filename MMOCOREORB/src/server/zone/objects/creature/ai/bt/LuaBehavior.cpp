@@ -11,8 +11,11 @@
 #include "server/zone/objects/scene/SceneObject.h"
 #include "engine/engine.h"
 
+#include "server/zone/ZoneServer.h"
+#include "server/chat/ChatManager.h"
+
 #ifndef AI_DEBUG
-//#define AI_DEBUG
+#define AI_DEBUG
 #endif
 
 LuaBehavior::LuaBehavior(const String& name) : Object() {
@@ -160,7 +163,6 @@ int LuaBehavior::interrupt(AiAgent* agent, SceneObject* source, int64 msg) {
 	messageFunc << source; //arg1
 	messageFunc << msg; //arg2
 
-	//agent->info(className + " interrupt... " + String::valueOf(msg), true);
 //	ZoneServer* zoneServer = agent->getZoneServer();
 //	ChatManager* chatManager = zoneServer->getChatManager();
 //	chatManager->broadcastMessage(agent, className + " interrupt... " + String::valueOf(msg), 0, 0, 0);

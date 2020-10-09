@@ -8,7 +8,9 @@
 #ifndef GUILDMEMBERREMOVESUICALLBACK_H_
 #define GUILDMEMBERREMOVESUICALLBACK_H_
 
+
 #include "server/zone/managers/guild/GuildManager.h"
+#include "server/zone/objects/tangible/terminal/guild/GuildTerminal.h"
 #include "server/zone/objects/player/sui/SuiCallback.h"
 
 class GuildMemberRemoveSuiCallback : public SuiCallback {
@@ -17,20 +19,18 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isMessageBox() || cancelPressed)
 			return;
 
 		ManagedReference<GuildManager*> guildManager = server->getGuildManager();
 
-		if (guildManager == nullptr)
+		if (guildManager == NULL)
 			return;
 
-		ManagedReference<SceneObject*> obj = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = suiBox->getUsingObject();
 
-		if (obj == nullptr || !obj->isPlayerCreature())
+		if (obj == NULL || !obj->isPlayerCreature())
 			return;
 
 		CreatureObject* target = cast<CreatureObject*>( obj.get());

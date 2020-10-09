@@ -6,7 +6,7 @@
 #define TAMECOMMAND_H_
 
 #include "server/zone/objects/scene/SceneObject.h"
-#include "server/zone/objects/creature/ai/Creature.h"
+#include "server/zone/objects/creature/Creature.h"
 
 class TameCommand : public QueueCommand {
 public:
@@ -29,14 +29,14 @@ public:
 
 		ManagedReference<SceneObject* > object = server->getZoneServer()->getObject(target);
 
-		if (object == nullptr || !object->isCreature()) {
+		if (object == NULL || !object->isCreature()) {
 			creature->sendSystemMessage("@pet/pet_menu:sys_cant_tame"); // You can't tame that
 			return INVALIDTARGET;
 		}
 
 		Creature* baby = cast<Creature*>(object.get());
 
-		if (!checkDistance(object, creature, 8.0f)){
+		if (!object->isInRange(creature, 8.0f + object->getTemplateRadius() + creature->getTemplateRadius())){
 			creature->sendSystemMessage("@system_msg:out_of_range"); // You are out of range
 			return TOOFAR;
 		}
@@ -53,7 +53,7 @@ public:
 			if (creature->isPlayerCreature()) {
 				PlayerObject* ghost = creature->getPlayerObject();
 
-				if (ghost == nullptr)
+				if (ghost == NULL)
 					return GENERALERROR;
 
 				if (ghost->hasAbility("admin")) {

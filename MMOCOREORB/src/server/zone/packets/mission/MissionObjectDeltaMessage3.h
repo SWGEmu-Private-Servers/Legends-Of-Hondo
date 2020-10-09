@@ -5,7 +5,8 @@
 #ifndef MISSIONOBJECTDELTAMESSAGE3_H_
 #define MISSIONOBJECTDELTAMESSAGE3_H_
 
-#include "server/zone/packets/DeltaMessage.h"
+#include "../DeltaMessage.h"
+
 #include "server/zone/objects/mission/MissionObject.h"
 
 class MissionObjectDeltaMessage3 : public DeltaMessage {
@@ -24,6 +25,14 @@ public:
 		insertInt(0);
 		insertAscii(stringId->getStringID());
 	}
+	
+	void updateHuntingMissionDescriptionStf(const String& message) {
+		startUpdate(0x0B);
+
+		insertAscii("Current Mission Status");
+		insertInt(0);
+		insertAscii(message);
+	}
 
 	void updateTitleStf(StringId* stringId) {
 		startUpdate(0x0C);
@@ -31,6 +40,14 @@ public:
 		insertAscii(stringId->getFile());
 		insertInt(0);
 		insertAscii(stringId->getStringID());
+	}
+	
+	void updateTitleAsCreatureNameStf(const String& heading, const String& message) {
+		startUpdate(0x0C);
+
+		insertAscii(heading);
+		insertInt(0);
+		insertAscii(message);
 	}
 
 	void updateTargetName(const String& name) {
@@ -130,6 +147,8 @@ public:
 		insertInt(miso->getTitleKey()); //make sure this isnt being reversed! like m27t -> t72m
 	}
 
+
+
 	void updateDestination() {
 		startUpdate(0x06);
 
@@ -146,11 +165,21 @@ public:
 		insertUnicode(miso->getCreatorName());
 	}
 
+
+
+
+
 	void updateDepictedObject() {
 		startUpdate(0x0A);
 
 		insertInt(miso->getDepictedObjCrc());
+	}
+
+
+
+
 	}*/
+
 
 };
 

@@ -5,8 +5,8 @@
 #ifndef BROADCASTPLANETCOMMAND_H_
 #define BROADCASTPLANETCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/objects/player/PlayerObject.h"
-#include "server/zone/managers/player/PlayerMap.h"
 
 class BroadcastPlanetCommand : public QueueCommand {
 public:
@@ -26,6 +26,12 @@ public:
 
 		if (!creature->isPlayerCreature())
 			return GENERALERROR;
+
+		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
+
+		//Check privileges
+		if (ghost == NULL || !ghost->isPrivileged())
+			return INSUFFICIENTPERMISSION;
 
 		StringTokenizer args(arguments.toString());
 
@@ -100,7 +106,7 @@ public:
 					ManagedReference<CreatureObject*> playerObject = playerMap->getNextValue(false);
 
 					if (creature->getPlanetCRC() == playerObject->getPlanetCRC()) {
-						if (playerObject->getFaction() == faction.hashCode() || playerObject->getPlayerObject()->hasGodMode())
+						if (playerObject->getFaction() == faction.hashCode() || playerObject->getPlayerObject()->isPrivileged())
 							playerObject->sendSystemMessage(type + message);
 					}
 				}
@@ -128,7 +134,7 @@ public:
 					ManagedReference<CreatureObject*> playerObject = playerMap->getNextValue(false);
 
 					if (creature->getPlanetCRC() == playerObject->getPlanetCRC()) {
-						if (playerObject->getFaction() == faction.hashCode() || playerObject->getPlayerObject()->hasGodMode())
+						if (playerObject->getFaction() == faction.hashCode() || playerObject->getPlayerObject()->isPrivileged())
 							playerObject->sendSystemMessage(type + message);
 					}
 				}

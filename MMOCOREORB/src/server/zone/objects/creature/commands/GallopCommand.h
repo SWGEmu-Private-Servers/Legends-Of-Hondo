@@ -27,13 +27,13 @@ public:
 
 		ManagedReference<SceneObject*> parent = creature->getParent().get();
 
-		if (parent == nullptr || !parent->isMount()) {
+		if (parent == NULL || !parent->isMount()) {
 			creature->sendSystemMessage("@combat_effects:not_mounted"); // You cannot perform this command without a mount.
 			return GENERALERROR;
 		}
 
 		ManagedReference<CreatureObject*> mount = cast<CreatureObject*>(parent.get());
-		if (mount == nullptr)
+		if (mount == NULL)
 			return GENERALERROR;
 
 		Locker crossLocker(mount, creature);
@@ -41,31 +41,38 @@ public:
 		uint32 crc = STRING_HASHCODE("gallop");
 
 		if (mount->hasBuff(crc) || creature->hasBuff(crc)) {
-			creature->sendSystemMessage("@combat_effects:already_galloping"); // You are already galloping!
 			return GENERALERROR;
 		}
 
-		if (!mount->checkCooldownRecovery("gallop")) {
+		if (!creature->checkCooldownRecovery("gallop")) {
 			creature->sendSystemMessage("@combat_effects:mount_tired"); // Your mount is too tired to gallop.
+			return GENERALERROR;
+		}
+
+		if (creature->hasBuff(STRING_HASHCODE("burstrun"))) {
+			creature->sendSystemMessage("You cannot gallop while burst run is active.");
 			return GENERALERROR;
 		}
 
 		PetManager* petManager = server->getZoneServer()->getPetManager();
 		ManagedReference<PetControlDevice*> pcd = mount->getControlDevice().get().castTo<PetControlDevice*>();
-		if (petManager == nullptr || pcd == nullptr)
+		if (petManager == NULL || pcd == NULL)
 			return GENERALERROR;
 
 		SharedObjectTemplate* objectTemplate = pcd->getObjectTemplate();
-		if (objectTemplate == nullptr)
+		if (objectTemplate == NULL)
 			return GENERALERROR;
 
 		MountSpeedData* mountSpeedData = petManager->getMountSpeedData(objectTemplate->getAppearanceFilename());
-		if (mountSpeedData == nullptr)
+		if (mountSpeedData == NULL)
 			return GENERALERROR;
 
 		int duration = mountSpeedData->getGallopDuration();
 		float magnitude = mountSpeedData->getGallopSpeedMultiplier();
 		int cooldown = mountSpeedData->getGallopCooldown();
+
+		if (creature->getPlayerObject()->isPrivileged())
+			cooldown = 5;
 
 		StringIdChatParameter startStringId("combat_effects", "gallop_start"); // Your mount runs as fast as it can.
 		StringIdChatParameter endStringId("combat_effects", "gallop_stop"); // Your mount is winded and slows down.
@@ -76,14 +83,26 @@ public:
 
 		buff->setSpeedMultiplierMod(magnitude);
 		buff->setAccelerationMultiplierMod(magnitude);
-		buff->setStartMessage(startStringId);
-		buff->setEndMessage(endStringId);
+
 		mount->addBuff(buff);
 
-		mount->updateCooldownTimer("gallop", (cooldown + duration) * 1000);
+		locker.release();
 
-		Reference<GallopNotifyAvailableEvent*> task = new GallopNotifyAvailableEvent(mount);
-		mount->addPendingTask("gallop_notify", task, (cooldown + duration) * 1000);
+		ManagedReference<GallopBuff*> buff2 = new GallopBuff(creature, crc, duration);
+
+		Locker locker2(buff2);
+
+		buff2->setSpeedMultiplierMod(magnitude);
+		buff2->setAccelerationMultiplierMod(magnitude);
+		buff2->setStartMessage(startStringId);
+		buff2->setEndMessage(endStringId);
+
+		creature->addBuff(buff2);
+
+		creature->updateCooldownTimer("gallop", (cooldown + duration) * 1000);
+
+		Reference<GallopNotifyAvailableEvent*> task = new GallopNotifyAvailableEvent(creature);
+		creature->addPendingTask("gallop_notify", task, (cooldown + duration) * 1000);
 
 		return SUCCESS;
 	}

@@ -61,7 +61,7 @@ public:
 
 	int calculateWound(int wound, int poolWounds, int poolMax) const {
 		int maxWound = poolMax - poolWounds - 1;
-		return (Math::max(0,Math::min(maxWound,wound)));
+		return (MAX(0,MIN(maxWound,wound)));
 	}
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
@@ -76,11 +76,11 @@ public:
 
 		ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(target);
 
-		if (object != nullptr) {
+		if (object != NULL) {
 			if (!object->isCreatureObject()) {
 				TangibleObject* tangibleObject = dynamic_cast<TangibleObject*>(object.get());
 
-				if (tangibleObject != nullptr && tangibleObject->isAttackableBy(creature)) {
+				if (tangibleObject != NULL && tangibleObject->isAttackableBy(creature)) {
 					object = creature;
 				} else {
 					creature->sendSystemMessage("@healing:heal_mind_invalid_target"); //Target must be a player or a creature pet in order to heal mind.
@@ -107,11 +107,6 @@ public:
 			return GENERALERROR;
 		}
 
-		if (checkForArenaDuel(creatureTarget)) {
-			creature->sendSystemMessage("@jedi_spam:no_help_target"); // You are not permitted to help that target.
-			return GENERALERROR;
-		}
-
 		if (!creatureTarget->isHealableBy(creature)) {
 			creature->sendSystemMessage("@healing:pvp_no_help"); //It would be unwise to help such a patient.
 			return GENERALERROR;
@@ -135,21 +130,21 @@ public:
 			return GENERALERROR;
 		}
 
-		if(!checkDistance(creature, creatureTarget, range))
+		if (!creatureTarget->isInRange(creature, range + creatureTarget->getTemplateRadius() + creature->getTemplateRadius()))
 			return TOOFAR;
 
 		PlayerManager* playerManager = server->getPlayerManager();
 
 		if (creature != creatureTarget && !CollisionManager::checkLineOfSight(creature, creatureTarget)) {
-			creature->sendSystemMessage("@healing:no_line_of_sight"); // You cannot see your target.
+			creature->sendSystemMessage("@container_error_message:container18");
 			return GENERALERROR;
 		}
 
 		float modSkill = (float) creature->getSkillMod("combat_medic_effectiveness");
 		int healPower = (int) (System::random(500)+800) * modSkill / 100;
-
+		
 		// Check BF
-		healPower = (int) (healPower * creature->calculateBFRatio());
+		healPower = (int) (healPower * (1 - creature->calculateBFRatio()) * (1 - creatureTarget->calculateBFRatio()));
 
 		int healedMind = creatureTarget->healDamage(creature, CreatureAttribute::MIND, healPower);
 

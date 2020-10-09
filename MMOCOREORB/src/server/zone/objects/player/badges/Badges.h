@@ -9,10 +9,6 @@
 #define BADGES_H_
 
 #include "engine/engine.h"
-#include "engine/util/json_utils.h"
-
-#include "server/zone/managers/player/BadgeList.h"
-
 #include "Badge.h"
 
 class Badges : public Serializable, public ReadWriteLock {
@@ -76,83 +72,52 @@ public:
 	}
 
 public:
-
-	friend void to_json(nlohmann::json& j, const Badges& b) {
-		auto array = nlohmann::json::array();
-
-		for (int i = 0; i < 5; ++i) {
-			array.push_back(b.badgeBitmask[i]);
-		}
-
-		j["badgeBitmasks"] = array;
-
-		auto array2 = nlohmann::json::array();
-
-		for (int i = 0; i < 6; ++i) {
-			array2.push_back(b.badgeTypeCounts[i]);
-		}
-
-		j["badgeTypeCounts"] = array2;
-		j["badgeTotal"] = b.badgeTotal;
-	}
-
-	void setBadge(const uint32 badgeid) {
-		const Badge* badge = BadgeList::instance()->get(badgeid);
-		setBadge(badge);
-	}
-
-	void setBadge(const Badge* badge) {
-		if (badge == nullptr) return;
-
+	void setBadge(int badgeindex) {
 		Locker locker(this);
 
-		const int badgeIndex = badge->getIndex();
+		int bitmaskNumber = badgeindex >> 5;
 
-		int bitmaskNumber = badgeIndex >> 5;
-
-		uint32 bit = badgeIndex % 32;
+		uint32 bit = badgeindex % 32;
 		uint32 value = 1 << bit;
 
 		if (bitmaskNumber > 4 || bitmaskNumber < 0) {
-			Logger::console.error("Badge::setBadge wrong badge index " + String::valueOf(badgeIndex));
+			Logger::console.error("Badge::setBadge wrong badge index " + String::valueOf(badgeindex));
 
 			return;
 		}
 
 		if (!(badgeBitmask[bitmaskNumber] & value)) {
 			badgeBitmask[bitmaskNumber] |= value;
-			const int badgeType = badge->getTypeInt();
-			badgeTypeCounts[badgeType]++;
+			badgeTypeCounts[Badge::getType(badgeindex)]++;
 			badgeTotal++;
 		}
 	}
 
-	void unsetBadge(Badge* badge) {
-		if (badge == nullptr) return;
+	void unsetBadge(int badgeindex) {
 		Locker locker(this);
 
-		const int badgeIndex = badge->getIndex();
-		int bitmaskNumber = badgeIndex >> 5;
+		int bitmaskNumber = badgeindex >> 5;
 
-		uint32 bit = badgeIndex % 32;
+		uint32 bit = badgeindex % 32;
 		uint32 value = 1 << bit;
 
 		if (bitmaskNumber > 4 || bitmaskNumber < 0) {
-			Logger::console.error("Badge::unsetBadge wrong badge index " + String::valueOf(badgeIndex));
+			Logger::console.error("Badge::unsetBadge wrong badge index " + String::valueOf(badgeindex));
 
 			return;
 		}
 
 		if (badgeBitmask[bitmaskNumber] & value) {
 			badgeBitmask[bitmaskNumber] -= value;
-			const int badgeType = badge->getTypeInt();
-			badgeTypeCounts[badgeType]--;
+			badgeTypeCounts[Badge::getType(badgeindex)]--;
 			badgeTotal--;
 		}
 
 	}
 
-	bool hasBadge(int badgeindex) const {
+
+
+	bool hasBadge(int badgeindex) {
 		int bitmaskNumber = badgeindex >> 5;
 
 		if (bitmaskNumber > 4 || bitmaskNumber < 0) {
@@ -164,9 +129,11 @@ public:
 		uint32 bit = badgeindex % 32;
 		uint32 value = 1 << bit;
 
-		ReadLocker locker(this);
+		rlock();
 
 		bool res = badgeBitmask[bitmaskNumber] & value;
+
+		runlock();
 
 		return res;
 	}
@@ -183,7 +150,7 @@ public:
 		badgeBitmask[index] = bitmask;
 	}
 
-	uint32 getBitmask(int index) const {
+	uint32 getBitmask(int index) {
 		uint32 res = 0;
 
 		if (index > 4 || index < 0) {
@@ -192,9 +159,11 @@ public:
 			return res;
 		}
 
-		ReadLocker locker(this);
+		rlock();
 
 		res = badgeBitmask[index];
+
+		runlock();
 
 		return res;
 	}
@@ -208,18 +177,22 @@ public:
 		badgeTypeCounts[index] = value;
 	}
 
-	uint8 getTypeCount(uint8 type) const {
-		ReadLocker locker(this);
+	uint8 getTypeCount(uint8 type) {
+		rlock();
 
 		uint8 res = badgeTypeCounts[type];
+
+		runlock();
 
 		return res;
 	}
 
-	uint8 getNumBadges() const {
-		ReadLocker locker(this);
+	uint8 getNumBadges() {
+		rlock();
 
 		uint8 res = badgeTotal;
+
+		runlock();
 
 		return res;
 	}

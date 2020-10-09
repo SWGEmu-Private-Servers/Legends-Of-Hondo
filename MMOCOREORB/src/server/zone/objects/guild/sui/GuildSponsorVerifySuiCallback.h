@@ -9,6 +9,7 @@
 #define GUILDSPONSORVERIFYSUICALLBACK_H_
 
 #include "server/zone/managers/guild/GuildManager.h"
+#include "server/zone/objects/tangible/terminal/guild/GuildTerminal.h"
 #include "server/zone/objects/player/sui/SuiCallback.h"
 
 class GuildSponsorVerifySuiCallback : public SuiCallback {
@@ -17,42 +18,32 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isMessageBox())
 			return;
 
 		ManagedReference<GuildManager*> guildManager = server->getGuildManager();
 
-		if (guildManager == nullptr)
+		if (guildManager == NULL)
 			return;
 
-		ManagedReference<SceneObject*> obj = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = suiBox->getUsingObject();
 
-		if (obj == nullptr || !obj->isPlayerCreature())
+		if (obj == NULL || !obj->isPlayerCreature())
 			return;
 
 		CreatureObject* sponsor = cast<CreatureObject*>( obj.get());
 
-		if (!sponsor->isOnline())
-			return;
+		ManagedReference<GuildObject*> guild = sponsor->getGuildObject();
 
-		if (!sponsor->isInRange(player, 32)) {
-			sponsor->sendSystemMessage("@guild:sponsor_not_found"); // The specified person to sponsor could not be found nearby.
-			return;
-		}
-
-		ManagedReference<GuildObject*> guild = sponsor->getGuildObject().get();
-
-		if (guild == nullptr || !guild->hasSponsorPermission(sponsor->getObjectID())) {
-			sponsor->sendSystemMessage("@guild:generic_fail_no_permission"); // You do not have permission to perform that operation.
+		if (guild == NULL || !guild->hasSponsorPermission(sponsor->getObjectID())) {
+			sponsor->sendSystemMessage("@guild:generic_fail_no_permission"); //You do not have permission to perform that operation.
 			return;
 		}
 
 		if (cancelPressed) {
 			StringIdChatParameter params;
-			params.setStringId("@guild:sponsor_decline"); // %TU has declined your sponsorship.
+			params.setStringId("@guild:sponsor_decline"); //%TU has declined your sponsorship.
 			params.setTU(player->getObjectID());
 			sponsor->sendSystemMessage(params);
 		} else {

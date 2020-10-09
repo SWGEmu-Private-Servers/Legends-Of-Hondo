@@ -17,32 +17,29 @@ public:
 	ColorArmorSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 
-		if (!sui->isColorPicker() || cancelPressed)
+		SuiColorBox* cBox = cast<SuiColorBox*>( sui);
+
+		if(!creature->isPlayerCreature())
 			return;
 
-		if (!creature->isPlayerCreature())
-			return;
+		if(!cancelPressed) {
 
-		SuiColorBox* cBox = cast<SuiColorBox*>(sui);
+			int index = Integer::valueOf(args->get(0).toString());
 
-		int index = Integer::valueOf(args->get(0).toString());
+			String palette = cBox->getColorPalette();
 
-		String palette = cBox->getColorPalette();
+			ManagedReference<SceneObject*> armorRehue = cBox->getUsingObject();
 
-		ManagedReference<SceneObject*> armorRehue = cBox->getUsingObject().get();
+			ManagedReference<TangibleObject*> armorRehueTano = cast<TangibleObject*>(armorRehue.get());
 
-		if (armorRehue == nullptr)
-			return;
+			if (armorRehueTano != NULL) {
+				Locker locker(armorRehueTano, creature);
 
-		ManagedReference<TangibleObject*> armorRehueTano = armorRehue->asTangibleObject();
+				armorRehueTano->setCustomizationVariable(palette, index, true);
+			}
 
-		if (armorRehueTano != nullptr) {
-			Locker locker(armorRehueTano, creature);
-
-			armorRehueTano->setCustomizationVariable(palette, index, true);
 		}
 	}
 };

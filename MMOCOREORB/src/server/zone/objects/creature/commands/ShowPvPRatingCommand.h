@@ -5,6 +5,8 @@
 #ifndef SHOWPVPRATINGCOMMAND_H_
 #define SHOWPVPRATINGCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+
 class ShowPvPRatingCommand : public QueueCommand {
 public:
 
@@ -20,43 +22,6 @@ public:
 
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
-
-		PlayerManager* playerManager = server->getZoneServer()->getPlayerManager();
-		ManagedReference<CreatureObject*> targetObj = nullptr;
-		StringTokenizer args(arguments.toString());
-
-		if (creature->getTargetID() != 0) {
-			targetObj = server->getZoneServer()->getObject(creature->getTargetID()).castTo<CreatureObject*>();
-		} else {
-			if (args.hasMoreTokens()) {
-				String targetName = "";
-				args.getStringToken(targetName);
-				targetObj = playerManager->getPlayer(targetName);
-			}
-		}
-
-		if (targetObj != nullptr) {
-			PlayerObject* targetGhost = targetObj->getPlayerObject();
-
-			if (targetGhost != nullptr) {
-				StringIdChatParameter ratingMsg;
-				ratingMsg.setStringId("pvp_rating", "pvp_rating_target");
-				ratingMsg.setTT(targetObj->getFirstName());
-				ratingMsg.setDI(targetGhost->getPvpRating());
-
-				creature->sendSystemMessage(ratingMsg);
-				return SUCCESS;
-			}
-		}
-
-		PlayerObject* ghost = creature->getPlayerObject();
-
-		if (ghost != nullptr) {
-			StringIdChatParameter ratingMsg;
-			ratingMsg.setStringId("pvp_rating", "pvp_rating");
-			ratingMsg.setDI(ghost->getPvpRating());
-			creature->sendSystemMessage(ratingMsg);
-		}
 
 		return SUCCESS;
 	}

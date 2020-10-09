@@ -8,11 +8,13 @@
 #ifndef SHIPUPDATETRANSFORMCALLBACK_H_
 #define SHIPUPDATETRANSFORMCALLBACK_H_
 
-#include "server/zone/packets/MessageCallback.h"
+#include "../MessageCallback.h"
+#include "engine/engine.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/player/PlayerObject.h"
 #include "ShipUpdateTransformCollisionMessage.h"
 #include "ShipUpdateTransformMessage.h"
+#include "server/zone/packets/object/DataTransform.h"
 #include "server/zone/managers/collision/CollisionManager.h"
 #include "server/zone/packets/object/PlayClientEffectObjectMessage.h"
 
@@ -86,43 +88,41 @@ public:
 		msg << "velA:" << velA << " velB:" << velB;
 		info(msg.toString(), true);*/
 
-		ManagedReference<CreatureObject*> object = client->getPlayer();
+		CreatureObject* object = cast<CreatureObject*>( client->getPlayer().get().get());
 
-		if (object == nullptr)
+		if (object == NULL)
 			return;
 
 		Locker _locker(object);
 
 		PlayerObject* ghost = object->getPlayerObject();
 
-		if (ghost == nullptr)
+		if (ghost == NULL)
 			return;
 
-		if (std::isnan(positionX) || std::isnan(positionY) || std::isnan(positionZ))
+		if (isnan(positionX) || isnan(positionY) || isnan(positionZ))
 			return;
 
-		if (std::isinf(positionX) || std::isinf(positionY) || std::isinf(positionZ))
+		if (isinf(positionX) || isinf(positionY) || isinf(positionZ))
 			return;
 
 		if (ghost->isTeleporting())
 			return;
 
-		if (object->getZone() == nullptr)
+		if (object->getZone() == NULL)
 			return;
 
 		if (positionX > 8000.0f || positionX < -8000.0f || positionY > 8000.0f || positionY < -8000.0f) {
-			/*
 			StringBuffer msg;
 			msg << "position out of bounds";
 			object->error(msg.toString());
-			*/
 
 			return;
 		}
 
 		ManagedReference<ShipObject*> ship = dynamic_cast<ShipObject*>(object->getParent().get().get());
 
-		if (ship == nullptr)
+		if (ship == NULL)
 			return;
 
 		Locker clocker(ship, object);

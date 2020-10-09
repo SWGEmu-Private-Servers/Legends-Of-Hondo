@@ -9,6 +9,8 @@
 #define CITYTREASURYDEPOSITSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/objects/player/sui/listbox/SuiListBox.h"
+#include "server/zone/objects/player/sessions/CityTreasuryWithdrawalSession.h"
 #include "server/zone/objects/region/CityRegion.h"
 
 class CityTreasuryDepositSuiCallback : public SuiCallback {
@@ -20,10 +22,8 @@ public:
 		cityRegion = region;
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
-		if (!suiBox->isTransferBox() || player == nullptr || cancelPressed || args->size() <= 0) {
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
+		if (!suiBox->isTransferBox() || player == NULL || cancelPressed || args->size() <= 0) {
 			return;
 		}
 
@@ -31,7 +31,7 @@ public:
 
 		ManagedReference<CityRegion*> city = cityRegion.get();
 
-		if (city == nullptr)
+		if (city == NULL)
 			return;
 
 		Locker lock(city, player);

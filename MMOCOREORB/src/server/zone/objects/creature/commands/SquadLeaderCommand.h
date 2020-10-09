@@ -8,8 +8,10 @@
 #ifndef SQUADLEADERCOMMAND_H_
 #define SQUADLEADERCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/chat/ChatManager.h"
+#include "server/zone/managers/stringid/StringIdManager.h"
 #include "CombatQueueCommand.h"
-#include "server/zone/objects/group/GroupObject.h"
 
 class SquadLeaderCommand : public CombatQueueCommand {
 protected:
@@ -18,13 +20,16 @@ protected:
 
 public:
 
-	SquadLeaderCommand(const String& name, ZoneProcessServer* server) : CombatQueueCommand(name, server) {
+	SquadLeaderCommand(const String& name, ZoneProcessServer* server)
+		: CombatQueueCommand(name, server) {
+
 		combatSpam = "";
 		action = "";
 		actionCRC = 0;
 	}
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
+
 		if (!checkStateMask(creature))
 			return INVALIDSTATE;
 
@@ -35,15 +40,15 @@ public:
 	}
 
 	bool checkGroupLeader(CreatureObject* player, GroupObject* group) const {
-		if (player == nullptr)
+		if (player == NULL)
 			return false;
 
-		if (group == nullptr) {
+		if (group == NULL) {
 			player->sendSystemMessage("@error_message:not_grouped");
 			return false;
 		}
 
-		if (group->getLeader() == nullptr) {
+		if (group->getLeader() == NULL) {
 			player->sendSystemMessage("@error_message:not_group_leader");
 			return false;
 		}
@@ -51,15 +56,12 @@ public:
 		if (group->getLeader() != player) {
 			player->sendSystemMessage("@error_message:not_group_leader");
 			return false;
-		}
-
-		if (player->hasAttackDelay() || !player->checkPostureChangeDelay())
-			return false;
+		}	
 
 		return true;
 	}
 
-	static bool isValidGroupAbilityTarget(CreatureObject* leader, CreatureObject* target, bool allowPet) {
+	bool isValidGroupAbilityTarget(CreatureObject* leader, CreatureObject* target, bool allowPet) const {
 		if (allowPet) {
 			if (!target->isPlayerCreature() && !target->isPet()) {
 				return false;
@@ -71,45 +73,52 @@ public:
 		if (target == leader)
 			return true;
 
-		if (leader->getZone() != target->getZone())
+		if (target->getParentRecursively(SceneObjectType::BUILDING) != leader->getParentRecursively(SceneObjectType::BUILDING))
 			return false;
 
-		CreatureObject* targetCreo = target;
+		PlayerObject* leaderGhost = leader->getPlayerObject();
 
-		if (allowPet && target->isPet())
-			targetCreo = target->getLinkedCreature().get();
-
-		PlayerObject* ghost = targetCreo->getPlayerObject();
-		if (ghost == nullptr || ghost->hasBhTef())
+		if (leaderGhost == NULL)
 			return false;
 
-		uint32 leaderFaction = leader->getFaction();
-		uint32 targetFaction = target->getFaction();
-		int targetStatus = targetCreo->getFactionStatus();
+		PlayerObject* targetGhost = NULL;
 
-		if (leaderFaction == 0) {
-			if (targetFaction != 0 && targetStatus > FactionStatus::ONLEAVE)
-				return false;
-		} else if (targetFaction != 0) {
-			if (leaderFaction != targetFaction && targetStatus > FactionStatus::ONLEAVE)
+		if (allowPet && target->isPet()) {
+			ManagedReference<CreatureObject*> owner = target->getLinkedCreature().get();
+
+			if (owner != NULL && owner->isPlayerCreature()) {
+				targetGhost = owner->getPlayerObject();
+			}
+		} else {
+			targetGhost = target->getPlayerObject();
+		}
+
+		if (targetGhost == NULL)
+			return false;
+
+		if (leader->getFaction() != 0 && target->getFaction() != 0) {
+			if (leader->getFaction() != target->getFaction() && targetGhost->getFactionStatus() != FactionStatus::ONLEAVE)
 				return false;
 
-			if (leaderFaction == targetFaction && targetStatus > leader->getFactionStatus())
+			if (leader->getFaction() == target->getFaction() && leaderGhost->getFactionStatus() == FactionStatus::COVERT && targetGhost->getFactionStatus() == FactionStatus::OVERT)
+				return false;
+
+			if (leaderGhost->getFactionStatus() == FactionStatus::ONLEAVE && targetGhost->getFactionStatus() != FactionStatus::ONLEAVE)
 				return false;
 		}
 
-		if (target->getParentRecursively(SceneObjectType::BUILDING) != leader->getParentRecursively(SceneObjectType::BUILDING))
+		if (leader->getFaction() == 0 && target->getFaction() != 0 && targetGhost->getFactionStatus() != FactionStatus::ONLEAVE)
 			return false;
 
 		return true;
 	}
 
 /*	bool shoutCommand(CreatureObject* player, GroupObject* group) {
-		if (player == nullptr || group == nullptr)
+		if (player == NULL || group == NULL)
 			return false;
 
 		ManagedReference<ChatManager*> chatManager = server->getChatManager();
-		if (chatManager == nullptr)
+		if (chatManager == NULL)
 			return false;
 
 		if (!player->getPlayerObject()->hasCommandMessageString(actionCRC))
@@ -121,91 +130,88 @@ public:
 		return true;
 	}
 */
-
 	float calculateGroupModifier(GroupObject* group) const {
-		if (group == nullptr)
+		if (group == NULL)
 			return 0;
 
-		float modifier = 1.0f + ((float)(group->getGroupSize()) / 20.0f);
+		float modifier = (float)(group->getGroupSize()) / 10.0f;
+			if(modifier < 1.0)
+				modifier += 1.0f;
 
 			return modifier;
-	}
-
-	bool inflictHAM(CreatureObject* player, int health, int action, int mind) const {
-		if (player == nullptr)
+    }
+    bool inflictHAM(CreatureObject* player, int health, int action, int mind) const {
+        if (player == NULL)
 			return false;
+        if(health < 0 || action < 0 || mind < 0)
+            return false;
 
-		if (health < 0 || action < 0 || mind < 0)
-			return false;
+        if(player->getHAM(CreatureAttribute::ACTION) <= action || player->getHAM(CreatureAttribute::HEALTH) <= health || player->getHAM(CreatureAttribute::MIND) <= mind)
+            return false;
 
-		if (player->getHAM(CreatureAttribute::ACTION) <= action || player->getHAM(CreatureAttribute::HEALTH) <= health || player->getHAM(CreatureAttribute::MIND) <= mind)
-			return false;
+        if(health > 0)
+            player->inflictDamage(player, CreatureAttribute::HEALTH, health, true);
 
-		if (health > 0)
-			player->inflictDamage(player, CreatureAttribute::HEALTH, health, true);
+        if(action > 0)
+            player->inflictDamage(player, CreatureAttribute::ACTION, action, true);
 
-		if (action > 0)
-			player->inflictDamage(player, CreatureAttribute::ACTION, action, true);
+        if(mind > 0)
+            player->inflictDamage(player, CreatureAttribute::MIND, mind, true);
 
-		if (mind > 0)
-			player->inflictDamage(player, CreatureAttribute::MIND, mind, true);
-
-		return true;
-	}
-
-	void sendCombatSpam(CreatureObject* player) const {
-		if (player == nullptr)
+        return true;
+    }
+	
+    void sendCombatSpam(CreatureObject* player) const {
+        if (player == NULL)
 			return;
+        if(combatSpam == "")
+            return;
 
-		if (combatSpam == "")
-			return;
-
-		player->sendSystemMessage("@cbt_spam:" + combatSpam);
-	}
-
+        player->sendSystemMessage("@cbt_spam:" + combatSpam);
+    }
+	
 /*    bool setCommandMessage(CreatureObject* creature, String message){
         if(!creature->isPlayerCreature())
             return false;
-
+			
         ManagedReference<CreatureObject*> player = (creature);
-        ManagedReference<PlayerObject*> playerObject = player->getPlayerObject();
-
+        ManagedReference<PlayerObject*> playerObject = player->getPlayerObject();	
+			
 		if (message.length()>128){
 			player->sendSystemMessage("Your message can only be up to 128 characters long.");
 			return false;
 		}
 		if (NameManager::instance()->isProfane(message)){
 			player->sendSystemMessage("Your message has failed the profanity filter.");
-			return false;
+			return false;				
 		}
-
+		
         if(message.isEmpty()) {
             playerObject->removeCommandMessageString(actionCRC);
 			player->sendSystemMessage("Your message has been removed.");
 		} else {
             playerObject->setCommandMessageString(actionCRC, message);
 			player->sendSystemMessage("Your message was set to :-\n" + message);
-		}
-
+		}		
+		
         return true;
     }
-*/
-
-	bool isSquadLeaderCommand() {
-		return true;
-	}
+*/	
+    bool isSquadLeaderCommand(){
+        return true;
+    }
 
 	float getCommandDuration(CreatureObject* object, const UnicodeString& arguments) const {
 		return defaultTime;
 	}
 
-	const String& getAction() const {
-		return action;
-	}
+    String getAction() const {
+        return action;
+    }
 
-	void setAction(String action) {
-		this->action = action;
-	}
+    void setAction(String action) {
+        this->action = action;
+    }
 };
 
 #endif /* SQUADLEADERCOMMAND_H_ */

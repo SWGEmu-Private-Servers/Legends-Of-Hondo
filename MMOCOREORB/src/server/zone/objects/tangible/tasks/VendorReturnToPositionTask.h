@@ -23,11 +23,11 @@ public:
 
 		ManagedReference<CreatureObject*> strongref = vendor.get();
 
-		if(strongref == nullptr)
+		if(strongref == NULL)
 			return;
 
 		Locker locker(strongref);
-		strongref->updateDirection(Math::deg2rad(heading));
+		strongref->updateDirection(heading);
 
 		strongref->removePendingTask("vendorreturn");
 	}

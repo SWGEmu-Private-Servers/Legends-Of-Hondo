@@ -5,6 +5,8 @@
 #ifndef DROIDTRAPTASK_H_
 #define DROIDTRAPTASK_H_
 
+#include "engine/util/u3d/Coordinate.h"
+#include "server/zone/objects/creature/AiAgent.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/managers/player/PlayerManager.h"
 
@@ -40,7 +42,7 @@ public:
 	}
 
 	void run() {
-		if (player == nullptr || target == nullptr || droid == nullptr)
+		if (player == NULL || target == NULL || droid == NULL)
 			return;
 
 		Locker locker2(droid);
@@ -50,8 +52,7 @@ public:
 		if(hit) {
 			Locker locker(target, droid);
 
-			if(buff != nullptr) {
-				Locker locker(buff);
+			if(buff != NULL) {
 				target->addBuff(buff);
 			}
 
@@ -62,7 +63,7 @@ public:
 			// i learn towards the offical forum posts
 			int xp = target->getLevel() * 15;
 			ManagedReference<PlayerManager*> playerManager = player->getZoneServer()->getPlayerManager();
-			if(playerManager != nullptr) {
+			if(playerManager != NULL) {
 				locker.release(); // release the target
 				Locker clock(player,droid);
 				playerManager->awardExperience(player, "trapping", xp, true);

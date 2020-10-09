@@ -14,13 +14,11 @@ namespace player {
 namespace events {
 
 class PlayerRecoveryEvent : public Task {
-	ManagedWeakReference<PlayerObject*> player;
-	Time startTime;
+	ManagedReference<PlayerObject*> player;
 
 public:
 	PlayerRecoveryEvent(PlayerObject* pl) : Task(2000) {
 		player = pl;
-		startTime.updateToCurrentTime();
 	}
 
 	~PlayerRecoveryEvent() {
@@ -31,29 +29,21 @@ public:
 	}
 
 	void run() {
-		ManagedReference<PlayerObject*> play = player.get();
-
-		if (play == nullptr)
-			return;
-
-		ManagedReference<SceneObject*> strongParent = play->getParent().get();
+		ManagedReference<SceneObject*> strongParent = player->getParent();
 		
-		if (strongParent == nullptr)
+		if (strongParent == NULL)
 			return;
 
 		Locker _locker(strongParent);
 
-		if (play->isOnline() || play->isLinkDead())
-			play->doRecovery(startTime.miliDifference());
+		player->clearRecoveryEvent();
+
+		if (player->isOnline() || player->isLinkDead())
+			player->doRecovery();
 
 
 	}
 
-	void schedule(uint64 delay = 0)
-	{
-		startTime.updateToCurrentTime();
-		Task::schedule(delay);
-	}
 };
 
 }

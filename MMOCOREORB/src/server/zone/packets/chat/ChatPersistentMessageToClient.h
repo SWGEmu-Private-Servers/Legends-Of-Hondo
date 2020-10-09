@@ -5,10 +5,12 @@
 #ifndef CHATPERSISTENTMESSAGETOCLIENT_H_
 #define CHATPERSISTENTMESSAGETOCLIENT_H_
 
-#include "engine/service/proto/BaseMessage.h"
+#include "engine/engine.h"
+#include "server/chat/ChatParameter.h"
 #include "server/chat/StringIdChatParameterVector.h"
 #include "server/chat/WaypointChatParameterVector.h"
 #include "server/chat/PersistentMessage.h"
+#include "server/chat/StringIdChatParameter.h"
 
 class ChatPersistentMessageToClient : public BaseMessage {
 	void insertParameters(PersistentMessage* mail) {
@@ -20,7 +22,7 @@ class ChatPersistentMessageToClient : public BaseMessage {
 		for (int i = 0; i < stringIdParameters->size(); ++i) {
 			StringIdChatParameter* parameter = &stringIdParameters->get(i);
 
-			if (parameter == nullptr)
+			if (parameter == NULL)
 				continue;
 
 			parameter->insertToMessage(this);
@@ -31,7 +33,7 @@ class ChatPersistentMessageToClient : public BaseMessage {
 		for (int i = 0; i < waypointParameters->size(); ++i) {
 			WaypointChatParameter* parameter = &waypointParameters->get(i);
 
-			if (parameter == nullptr)
+			if (parameter == NULL)
 				continue;
 
 			parameter->insertToMessage(this);
@@ -111,13 +113,13 @@ public:
 		setCompression(true);
 	}
 
-	ChatPersistentMessageToClient(PersistentMessage* mail, const String& serverName, bool sendBody) {
+	ChatPersistentMessageToClient(PersistentMessage* mail, bool sendBody) {
 		insertShort(0x02);
 		insertInt(0x08485E17); //ChatPersistentMessageToClient
 
 		insertAscii(mail->getSenderName());
-		insertAscii("SWG"); // Game Name
-		insertAscii(serverName.toCharArray()); //Galaxy Name
+		insertAscii(""); //Game NOTE: SOE doesn't send this, why should we?
+		insertAscii(""); //Galaxy Name
 		insertInt(mail->getMailID());
 
 		insertByte((uint8) !sendBody);

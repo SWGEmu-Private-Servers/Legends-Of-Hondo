@@ -25,15 +25,16 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> object = cast<CreatureObject*>(client->getPlayer().get().get());
 
-		if (player == nullptr)
+		if (object == NULL)
 			return;
 
-		PlayerObject* ghost = player->getPlayerObject();
+		PlayerObject* ghost = object->getPlayerObject();
 
-		if (ghost != nullptr)
+		if (ghost != NULL)
 			ghost->setTeleporting(false);
+
 	}
 };
 

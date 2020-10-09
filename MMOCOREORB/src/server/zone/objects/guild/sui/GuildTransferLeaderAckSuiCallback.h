@@ -7,11 +7,9 @@
 
 #ifndef GUILDTRANSFERLEADERACKSUICALLBACK_H_
 #define GUILDTRANSFERLEADERACKSUICALLBACK_H_
-
 #include "server/zone/managers/guild/GuildManager.h"
 #include "server/zone/objects/player/sui/SuiCallback.h"
-#include "server/zone/objects/building/BuildingObject.h"
-#include "server/zone/objects/tangible/terminal/guild/GuildTerminal.h"
+
 
 class GuildTransferLeaderAckSuiCallback : public SuiCallback {
 public:
@@ -19,60 +17,42 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* newLeader, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* newLeader, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
+		GuildObject* guild = newLeader->getGuildObject();
 
-		ManagedReference<SceneObject*> sceoTerminal = suiBox->getUsingObject().get();
-		if (sceoTerminal == nullptr || !sceoTerminal->isTerminal())
+		if ( guild == NULL)
 			return;
 
-		Terminal* terminal = sceoTerminal.castTo<Terminal*>();
-		if (!terminal->isGuildTerminal())
-			return;
+		// get the guild leader
+		uint64 leaderID = guild->getGuildLeaderID();
 
-		GuildTerminal* guildTerminal = cast<GuildTerminal*>(terminal);
-		if (guildTerminal == nullptr)
-			return;
+		ManagedReference<SceneObject*> sceo = server->getObject(leaderID);
 
-		ManagedReference<BuildingObject*> buildingObject = guildTerminal->getParentRecursively(SceneObjectType::BUILDING).castTo<BuildingObject*>();
-		if (buildingObject == nullptr)
-			return;
+		ManagedReference<CreatureObject*> currentLeader = NULL;
 
-		ManagedReference<CreatureObject*> owner = buildingObject->getOwnerCreatureObject();
-		if (owner == nullptr || !owner->isPlayerCreature()) {
-			return;
+		if (sceo != NULL && sceo->isCreatureObject()) {
+			currentLeader = cast<CreatureObject*>(sceo.get());
 		}
 
-		ManagedReference<GuildObject*> guild = owner->getGuildObject().get();
-		if (guild == nullptr || !guild->isTransferPending())
-			return;
+		if ( cancelPressed )
+		{
+			if ( currentLeader != NULL )
+				currentLeader->sendSystemMessage("@guild:ml_rejected"); // That player does not want to become guild leader
 
-		Locker clocker(guild, newLeader);
-
-		if (guild->getGuildLeaderID() != owner->getObjectID() || guild != newLeader->getGuildObject().get()) {
-			guild->setTransferPending(false);
-			return;
-		}
-
-		if ( cancelPressed ) {
-			guild->setTransferPending(false);
-			owner->sendSystemMessage("@guild:ml_rejected"); // That player does not want to become guild leader
 			return;
 		}
 
 		ManagedReference<GuildManager*> guildManager = server->getGuildManager();
 
-		if ( guildManager != nullptr ) {
-			ManagedReference<CreatureObject*> newOwner = newLeader;
+		if ( guildManager != NULL )
+		{
+			// change leadership of guild
+			guildManager->transferLeadership(newLeader, currentLeader, suiBox->getUsingObject().get());
 
-			Core::getTaskManager()->executeTask([=] () {
-				// transfer structure to new leader
-				if (guildManager->transferGuildHall(newOwner, sceoTerminal)) {
-					// change leadership of guild
-					guildManager->transferLeadership(newOwner, owner, false);
-				}
-			}, "TransferGuildLambda");
+			// transfer structure to new leader ..pass the guild terminal back transferGuildHall
+			guildManager->transferGuildHall(newLeader, suiBox->getUsingObject().get());
 		}
+
 	}
 };
 

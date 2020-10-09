@@ -6,9 +6,17 @@
  */
 
 #include "ClientCreateCharacterCallback.h"
+
+#include "ClientCreateCharacter.h"
+
+#include "ClientCreateCharacterSuccess.h"
+#include "ClientCreateCharacterFailed.h"
+
 #include "server/zone/managers/player/PlayerManager.h"
 #include "server/zone/ZoneProcessServer.h"
 #include "server/zone/objects/player/Races.h"
+#include "server/zone/managers/objectcontroller/ObjectController.h"
+
 
 void ClientCreateCharacterCallback::parse(Message* message) {
 
@@ -40,12 +48,6 @@ void ClientCreateCharacterCallback::parse(Message* message) {
 }
 
 void ClientCreateCharacterCallback::run() {
-	if (client->getAccountID() == 0) {
-		client->error("character create attempt with account id 0");
-
-		return;
-	}
-
 	client->info("ClientCreateCharacterCallback::run()");
 
 	PlayerManager* playerManager = server->getPlayerManager();

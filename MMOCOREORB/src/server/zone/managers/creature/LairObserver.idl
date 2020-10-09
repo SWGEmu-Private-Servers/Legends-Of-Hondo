@@ -4,18 +4,17 @@
 */
 
 package server.zone.managers.creature;
-
 import engine.core.ManagedObject;
+import engine.util.Observer;
 import engine.util.Observable;
 import server.zone.managers.creature.SpawnObserver;
+import server.zone.objects.creature.CreatureObject;
 import server.zone.objects.tangible.TangibleObject;
 import server.zone.managers.creature.HealLairObserverEvent;
-include system.thread.atomic.AtomicInteger;
 
 class LairObserver extends SpawnObserver {
 
-	@dereferenced
-	protected AtomicInteger spawnNumber;
+	protected int spawnNumber;
 
 	protected transient HealLairObserverEvent healLairEvent;
 
@@ -25,7 +24,7 @@ class LairObserver extends SpawnObserver {
 		Logger.setLoggingName("LairObserver");
 
 		healLairEvent = null;
-		spawnNumber.set(0);
+		spawnNumber = 0;
 	}
 
 	public native int notifyObserverEvent(unsigned int eventType, Observable observable, ManagedObject arg1, long arg2);
@@ -49,6 +48,6 @@ class LairObserver extends SpawnObserver {
 	}
 
 	public int getSpawnNumber() {
-		return spawnNumber.get();
+		return spawnNumber;
 	}
 }

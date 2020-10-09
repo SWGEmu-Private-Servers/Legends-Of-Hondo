@@ -3,10 +3,10 @@
 #define PETFOLLOWCOMMAND_H_
 
 #include "server/zone/objects/creature/commands/QueueCommand.h"
-#include "server/zone/objects/creature/ai/AiAgent.h"
-#include "server/zone/objects/creature/ai/DroidObject.h"
+#include "server/zone/objects/creature/AiAgent.h"
+#include "server/zone/objects/creature/DroidObject.h"
 #include "server/zone/managers/combat/CombatManager.h"
-#include "templates/params/ObserverEventType.h"
+#include "server/zone/objects/scene/ObserverEventType.h"
 #include "server/zone/managers/creature/PetManager.h"
 
 class PetFollowCommand : public QueueCommand {
@@ -17,67 +17,28 @@ public:
 
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
-		ManagedReference<PetControlDevice*> controlDevice = creature->getControlDevice().get().castTo<PetControlDevice*>();
 
-		if (controlDevice == nullptr)
+		ManagedReference<PetControlDevice*> controlDevice = creature->getControlDevice().castTo<PetControlDevice*>();
+		if (controlDevice == NULL)
 			return GENERALERROR;
 
 		ManagedReference<AiAgent*> pet = cast<AiAgent*>(creature);
-
-		if (pet == nullptr)
+		if( pet == NULL )
 			return GENERALERROR;
 
 		if (pet->hasRidingCreature())
 			return GENERALERROR;
 
-		if (pet->getPosture() != CreaturePosture::UPRIGHT && pet->getPosture() != CreaturePosture::KNOCKEDDOWN)
-			pet->setPosture(CreaturePosture::UPRIGHT);
-
 		ManagedReference<SceneObject*> targetObject = server->getZoneServer()->getObject(target, true);
-		if (targetObject == nullptr || !targetObject->isCreatureObject() ) { // pets should be able to follow other mobiles as a command. i found multiple references to this. -- washu
+		if (targetObject == NULL || !targetObject->isCreatureObject() ) { // pets should be able to follow other mobiles as a command. i found multiple references to this. -- washu
 			pet->showFlyText("npc_reaction/flytext","confused", 204, 0, 0);  // "?!!?!?!"
 			return GENERALERROR;
-		}
-
-		StringTokenizer tokenizer(arguments.toString());
-
-		if (!tokenizer.hasMoreTokens())
-			return GENERALERROR;
-
-		uint64 playerID = tokenizer.getLongToken();
-
-		ManagedReference<CreatureObject*> player = server->getZoneServer()->getObject(playerID, true).castTo<CreatureObject*>();
-
-		if (player == nullptr)
-			return GENERALERROR;
-
-		CreatureObject* targetCreature = cast<CreatureObject*>(targetObject.get());
-
-		if (targetCreature == nullptr)
-			return GENERALERROR;
-
-		if (targetCreature != player && targetCreature->isAttackableBy(creature) && !CollisionManager::checkLineOfSight(player, targetObject)) {
-			pet->showFlyText("npc_reaction/flytext","confused", 204, 0, 0);  // "?!!?!?!"
-			return INVALIDTARGET;
-		}
-
-		Reference<CellObject*> targetCell = targetObject->getParent().get().castTo<CellObject*>();
-
-		if (targetCell != nullptr) {
-			auto perms = targetCell->getContainerPermissions();
-
-			if (!perms->hasInheritPermissionsFromParent()) {
-				if (!targetCell->checkContainerPermission(player, ContainerPermissions::WALKIN)) {
-					pet->showFlyText("npc_reaction/flytext","confused", 204, 0, 0);  // "?!!?!?!"
-					return INVALIDTARGET;
-				}
-			}
 		}
 
 		// Check if droid has power
 		if( controlDevice->getPetType() == PetManager::DROIDPET ){
 			ManagedReference<DroidObject*> droidPet = cast<DroidObject*>(pet.get());
-			if( droidPet == nullptr )
+			if( droidPet == NULL )
 				return GENERALERROR;
 
 			if( !droidPet->hasPower() ){

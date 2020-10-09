@@ -5,7 +5,9 @@
 #ifndef WARCRY2COMMAND_H_
 #define WARCRY2COMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/managers/combat/CombatManager.h"
+#include "server/chat/ChatMessage.h"
 #include "CombatQueueCommand.h"
 
 class Warcry2Command : public CombatQueueCommand {
@@ -25,22 +27,18 @@ public:
 
 		Reference<TangibleObject*> targetObject = server->getZoneServer()->getObject(target).castTo<TangibleObject*>();
 
-		if (targetObject == nullptr || !targetObject->isCreatureObject())
+		if (targetObject == NULL || !targetObject->isCreatureObject())
 			return INVALIDTARGET;
 
 		int res = doCombatAction(creature, target);
 
 		if (res == TOOFAR)
-			CombatManager::instance()->broadcastCombatSpam(creature, targetObject, nullptr, 0, "cbt_spam", "warcry_out_of_range", 0);
+			CombatManager::instance()->broadcastCombatSpam(creature, targetObject, NULL, 0, "cbt_spam", "warcry_out_of_range", 0);
 
-		if (res == SUCCESS && creature->isPlayerCreature()) {
-			ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
-
-			if (ghost != nullptr && !ghost->getCommandMessageString(STRING_HASHCODE("warcry2")).isEmpty() && creature->checkCooldownRecovery("command_message")) {
-					UnicodeString shout(ghost->getCommandMessageString(STRING_HASHCODE("warcry2")));
-					server->getChatManager()->broadcastChatMessage(creature, shout, 0, 80, creature->getMoodID(), 0, ghost->getLanguageID());
-					creature->updateCooldownTimer("command_message", 30 * 1000);
-			}
+		if (res == SUCCESS && creature->isPlayerCreature() && creature->getPlayerObject()->getCommandMessageString(STRING_HASHCODE("warcry2")).isEmpty()==false && creature->checkCooldownRecovery("command_message")) {
+			UnicodeString shout(creature->getPlayerObject()->getCommandMessageString(STRING_HASHCODE("warcry2")));
+ 	 	 	server->getChatManager()->broadcastMessage(creature, shout, 0, 0, 80);
+ 	 	 	creature->updateCooldownTimer("command_message", 30 * 1000);
 		}
 		return res;
 	}

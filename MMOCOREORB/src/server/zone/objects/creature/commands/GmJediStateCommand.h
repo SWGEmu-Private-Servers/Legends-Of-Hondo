@@ -23,9 +23,16 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
+		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
+
+		if (ghost == NULL || !ghost->isPrivileged()) {
+			creature->sendSystemMessage("@error_message:insufficient_permissions"); //You do not have sufficient permissions to perform the requested action.
+			return INSUFFICIENTPERMISSION;
+		}
+
 		ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(target);
 
-		if (object == nullptr || !object->isCreatureObject())
+		if (object == NULL || !object->isCreatureObject())
 			return INVALIDTARGET;
 
 		CreatureObject* targetCreature = cast<CreatureObject*>( object.get());
@@ -33,8 +40,6 @@ public:
 		Locker clocker(targetCreature, creature);
 
 		ManagedReference<PlayerObject*> targetGhost = targetCreature->getPlayerObject();
-		if(targetGhost == nullptr)
-			return INVALIDTARGET;
 
 		StringTokenizer args(arguments.toString());
 

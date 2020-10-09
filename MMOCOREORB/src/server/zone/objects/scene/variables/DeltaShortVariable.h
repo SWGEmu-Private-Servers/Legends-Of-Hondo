@@ -8,12 +8,12 @@
 #ifndef DELTASHORTVARIABLE_H_
 #define DELTASHORTVARIABLE_H_
 
-#include "DeltaBasicVariable.h"
+#include "DeltaVariable.h"
 
 template<int BaselineName, uint8 Type, int DeltaID>
-class DeltaShortVariable : public DeltaBasicVariable<uint64> {
+class DeltaShortVariable : public DeltaVariable<uint64> {
 public:
-	void update(int newValue, bool broadcastStandalone = false, server::zone::objects::scene::SceneObject* obj = nullptr) {
+	void update(int newValue, bool broadcastStandalone = false, SceneObject* obj = NULL) {
 		set(newValue);
 
 		if (broadcastStandalone) {
@@ -21,7 +21,7 @@ public:
 		}
 	}
 
-	void broadcastStandaloneDeltaMessage(server::zone::objects::scene::SceneObject* obj) {
+	void broadcastStandaloneDeltaMessage(SceneObject* obj) {
 		DeltaMessage* msg = new DeltaMessage(obj->getObjectID(), BaselineName, Type);
 		msg->addShortUpdate(DeltaID, object);
 		msg->close();

@@ -8,8 +8,7 @@
 #ifndef DESPAWNCREATURETASK_H_
 #define DESPAWNCREATURETASK_H_
 
-#include "server/zone/objects/creature/ai/AiAgent.h"
-#include "server/zone/Zone.h"
+#include "server/zone/objects/creature/AiAgent.h"
 
 class DespawnCreatureTask : public Task {
 	ManagedReference<AiAgent*> creature;
@@ -17,12 +16,6 @@ class DespawnCreatureTask : public Task {
 public:
 	DespawnCreatureTask(AiAgent* cr) {
 		creature = cr;
-
-		auto zone = cr->getZone();
-
-		if (zone != nullptr) {
-			setCustomTaskQueue(zone->getZoneName());
-		}
 	}
 
 	void run() {
@@ -32,7 +25,7 @@ public:
 
 		creature->removePendingTask("despawn");
 
-		if (zone == nullptr)
+		if (zone == NULL)
 			return;
 
 		creature->destroyObjectFromWorld(false);

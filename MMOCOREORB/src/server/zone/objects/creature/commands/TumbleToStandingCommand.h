@@ -5,6 +5,9 @@
 #ifndef TUMBLETOSTANDINGCOMMAND_H_
 #define TUMBLETOSTANDINGCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/objects/creature/events/AnimationTask.h"
+
 class TumbleToStandingCommand : public QueueCommand {
 public:
 
@@ -12,6 +15,7 @@ public:
 		: QueueCommand(name, server) {
 
 	}
+	
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
 
@@ -21,27 +25,25 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
-		if (creature->hasAttackDelay() || !creature->checkPostureChangeDelay())
-			return GENERALERROR;
-
-		//Check for and deduct HAM cost.
-		int actionCost = creature->calculateCostAdjustment(CreatureAttribute::QUICKNESS, 100);
-		if (creature->getHAM(CreatureAttribute::ACTION) <= actionCost)
-			return INSUFFICIENTHAM;
-
-		creature->inflictDamage(creature, CreatureAttribute::ACTION, actionCost, true);
-
-		creature->setPosture(CreaturePosture::UPRIGHT, false, true);
-
-		Reference<CreatureObject*> defender = server->getZoneServer()->getObject(target).castTo<CreatureObject*>();
-		if (defender == nullptr)
-			creature->doCombatAnimation(creature,STRING_HASHCODE("tumble"),0,0xFF);
-		else
-			creature->doCombatAnimation(defender,STRING_HASHCODE("tumble_facing"),0,0xFF);
-
 		if (creature->isDizzied() && System::random(100) < 85) {
 			creature->queueDizzyFallEvent();
 		} else {
+			//Check for and deduct HAM cost.
+			int actionCost = creature->calculateCostAdjustment(CreatureAttribute::QUICKNESS, 100);
+			if (creature->getHAM(CreatureAttribute::ACTION) <= actionCost)
+				return INSUFFICIENTHAM;
+
+			creature->inflictDamage(creature, CreatureAttribute::ACTION, actionCost, true);
+
+
+			creature->setPosture(CreaturePosture::UPRIGHT, false);
+
+			Reference<CreatureObject*> defender = server->getZoneServer()->getObject(target).castTo<CreatureObject*>();
+			if (defender == NULL)
+				creature->doCombatAnimation(creature,STRING_HASHCODE("tumble"),0,0xFF);
+			else
+				creature->doCombatAnimation(defender,STRING_HASHCODE("tumble_facing"),0,0xFF);
+
 			Reference<StateBuff*> buff = new StateBuff(creature, CreatureState::TUMBLING, 1);
 
 			Locker locker(buff);
@@ -53,6 +55,10 @@ public:
 
 			locker.release();
 
+			CreatureObjectDeltaMessage3* pmsg = new CreatureObjectDeltaMessage3(creature);
+			pmsg->updatePosture();
+			pmsg->close();
+			creature->broadcastMessage(pmsg, true);
 			creature->sendStateCombatSpam("cbt_spam", "tum_standing", 0);
 		}
 

@@ -8,9 +8,12 @@
 #ifndef FACTIONMANAGER_H_
 #define FACTIONMANAGER_H_
 
+#include "engine/engine.h"
 #include "FactionMap.h"
 #include "server/zone/objects/creature/CreatureObject.h"
-#include "templates/faction/FactionRanks.h"
+#include "server/zone/templates/faction/FactionRanks.h"
+
+class FactionMap;
 
 class FactionManager : public Singleton<FactionManager>, public Logger, public Object {
 	FactionMap factionMap;
@@ -19,14 +22,18 @@ class FactionManager : public Singleton<FactionManager>, public Logger, public O
 public:
 	FactionManager();
 
-	static const int TEFTIMER = 300000;
-
 	/**
 	 * Loads faction configuration information from the faction manager lua file: managers/faction_manager.lua
 	 * Loads faction ranks from datatable
 	 * Sets up faction relationships
 	 */
 	void loadData();
+
+	/**
+	 * Lua Interface function that adds a faction relationship to the FactionMap.
+	 * @param L The Lua State containing the data.
+	 */
+	static int addFaction(lua_State* L);
 
 	/**
 	 * Awards points to the player based on the faction they killed.

@@ -27,11 +27,7 @@ public:
 	void run() {
 		Locker locker(creature);
 
-		if (creature->isDead()) {
-			creature->clearDizzyEvent();
-			return;
-		}
-
+		// Small chance to stand up while dizzy, but only if they haven't tried in the last 2 seconds...
 		if (creature->isDizzied()) {
 			if (creature->isRidingMount()) {
 				creature->updateCooldownTimer("mount_dismount", 0);

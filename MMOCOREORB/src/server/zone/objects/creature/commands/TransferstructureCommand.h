@@ -6,11 +6,9 @@
 #define TRANSFERSTRUCTURECOMMAND_H_
 
 #include "server/zone/objects/scene/SceneObject.h"
-#include "server/zone/objects/region/CityRegion.h"
 #include "server/zone/managers/city/CityManager.h"
 #include "server/zone/managers/player/PlayerManager.h"
-#include "templates/tangible/SharedStructureObjectTemplate.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
+#include "server/zone/templates/tangible/SharedStructureObjectTemplate.h"
 
 class TransferstructureCommand : public QueueCommand {
 public:
@@ -19,6 +17,8 @@ public:
 		: QueueCommand(name, server) {
 
 	}
+
+
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
 
@@ -30,19 +30,14 @@ public:
 
 		ManagedReference<PlayerManager*> playerManager = server->getPlayerManager();
 
-		uint64 targetid = creature->getTargetID();
-		ManagedReference<SceneObject*> obj = playerManager->getInRangeStructureWithAdminRights(creature, targetid);
+		ManagedReference<SceneObject*> obj = playerManager->getInRangeStructureWithAdminRights(creature);
 
-		if (obj == nullptr || !obj->isStructureObject()) {
+		if (obj == NULL || !obj->isStructureObject()) {
 			creature->sendSystemMessage("@player_structure:command_no_building"); //You must be in a building or near an installation to use that command.
 			return INVALIDPARAMETERS;
 		}
 
 		StructureObject* structure = cast<StructureObject*>( obj.get());
-
-		if (structure->isCivicStructure()) {
-			return INVALIDTARGET;
-		}
 
 		if (!structure->isOwnerOf(creature)) {
 			creature->sendSystemMessage("@player_structure:not_owner"); //You are not the owner of this structure.
@@ -59,23 +54,23 @@ public:
 			return GENERALERROR;
 		}
 
-		if (structure->isBuildingObject()) {
+		if (structure->isBuildingObject() && creature->getRootParent() != structure) {
 
 			BuildingObject* building = cast<BuildingObject*>(structure);
 
-			for (int i = 1; i <= building->getTotalCellNumber(); ++i) {
+			for (int i = 1; i < building->getTotalCellNumber(); ++i) {
 				ManagedReference<CellObject*> cell = building->getCell(i);
 
-				if(cell == nullptr)
+				if(cell == NULL)
 					continue;
 
 				for(int j = 0; j < cell->getContainerObjectsSize(); ++j) {
 					ManagedReference<SceneObject*> obj = cell->getContainerObject(j);
 
-					if(obj == nullptr)
+					if(obj == NULL)
 						continue;
 
-					if((obj->isNoTrade() || obj->containsNoTradeObjectRecursive()) && !obj->isVendor()) {
+					if(obj->isNoTrade() || obj->containsNoTradeObjectRecursive()) {
 						StringIdChatParameter param("@player_structure:building_has_notrade"); // The object %TT may not be traded and must be put in your inventory or destroyed before the building can be transferred.
 						param.setTT(obj->getDisplayedName());
 						creature->sendSystemMessage(param);
@@ -87,7 +82,7 @@ public:
 
 		ManagedReference<SceneObject*> targetObject = server->getZoneServer()->getObject(target);
 
-		if (targetObject == nullptr || !targetObject->isCreatureObject() || !targetObject->isPlayerCreature()) {
+		if (targetObject == NULL || !targetObject->isCreatureObject() || !targetObject->isPlayerCreature()) {
 			creature->sendSystemMessage("@player_structure:no_transfer_target"); //You must specify a player with whom to transfer ownership.
 			return INVALIDTARGET;
 		}
@@ -108,35 +103,36 @@ public:
 
 		PlayerObject* ghost = targetCreature->getPlayerObject();
 
-		const String& abilityRequired = tmpl->getAbilityRequired();
+		String& abilityRequired = tmpl->getAbilityRequired();
 
 		if (abilityRequired != "" && !ghost->hasAbility(abilityRequired)) {
 			StringIdChatParameter params("@player_structure:not_able_to_own"); //%NT is not able to own this structure.
-			params.setTT(targetCreature->getObjectID());
+			params.setTT(targetCreature);
 			creature->sendSystemMessage(params);
 			return GENERALERROR;
 		}
 
 		return doTransferStructure(creature, targetCreature, structure);
+
 	}
 
 	// pre: creature, targetCreature, and structure are not locked
-	// bForceTransfer = whether or not to force the transfer. This means do the transfer even if the target is offline or out of range, or if the old owner is nullptr
+	// bForceTransfer = whether or not to force the transfer. This means do the transfer even if the target is offline or out of range, or if the old owner is NULL
 	static int doTransferStructure(CreatureObject* creature, CreatureObject* targetCreature, StructureObject* structure, bool bForceTransfer = false){
-		if (targetCreature == nullptr || structure == nullptr)
+		if (targetCreature == NULL || structure == NULL)
 			return GENERALERROR;
 
 		ManagedReference<PlayerObject*> targetGhost = targetCreature->getPlayerObject();
-		if (targetGhost == nullptr)
+		if (targetGhost == NULL)
 			return GENERALERROR;
 
-		ManagedReference<PlayerObject*> ghost = nullptr;
+		ManagedReference<PlayerObject*> ghost = NULL;
 
-		if (creature != nullptr) {
+		if (creature != NULL) {
 			ghost = creature->getPlayerObject().get();
 		}
 
-		if (!bForceTransfer && (creature == nullptr || ghost == nullptr)) {
+		if (!bForceTransfer && (creature == NULL || ghost == NULL)) {
 			return GENERALERROR;
 		}
 
@@ -152,8 +148,9 @@ public:
 
 		if (!targetGhost->hasLotsRemaining(lotSize)) {
 			if ( !bForceTransfer) {
+				System::out << "lotsize: " << lotSize << endl;
 				StringIdChatParameter params("@player_structure:not_able_to_own"); //%NT is not able to own this structure.
-				params.setTT(targetCreature->getObjectID());
+				params.setTT(targetCreature);
 				creature->sendSystemMessage(params);
 			} else {
 
@@ -166,9 +163,9 @@ public:
 		//TODO:
 		//@player_structure:trail_no_transfer Trial accounts may not be involved in a property ownership transfer.
 
-		ManagedReference<CityRegion*> region = structure->getCityRegion().get();
+		ManagedReference<CityRegion*> region = structure->getCityRegion();
 
-		if (region != nullptr && ghost != nullptr) {
+		if (region != NULL && ghost != NULL) {
 			Locker locker(region);
 
 			if (region->isBanned(targetCreature->getObjectID())) {
@@ -190,24 +187,23 @@ public:
 			locker.release();
 		}
 
-		Locker targetLock(targetCreature);
-		Locker clocker(structure, targetCreature);
-
-		TransactionLog trx(creature, targetCreature, structure, TrxCode::TRANSFERSTRUCT);
-		trx.addState("surplusMaintenance", structure->getSurplusMaintenance());
-		trx.addState("surplusPower", structure->getSurplusPower());
-		trx.addRelatedObject(structure->getObjectID(), true);
-		trx.setExportRelatedObjects(true);
-
-		if (ghost != nullptr) {
+		if (ghost != NULL) {
 			Locker lock(creature);
+
+			if (ghost->getDeclaredResidence() == structure->getObjectID()) {
+				ghost->setDeclaredResidence(NULL);
+			}
 
 			ghost->removeOwnedStructure(structure);
 
 			lock.release();
 		}
 
+		Locker targetLock(targetCreature);
+
 		targetGhost->addOwnedStructure(structure);
+
+		Locker clocker(structure, targetCreature);
 
 		//Setup permissions.
 		structure->revokeAllPermissions(targetCreature->getObjectID());
@@ -215,24 +211,20 @@ public:
 
 		structure->setOwner(targetCreature->getObjectID());
 
-		if (creature != nullptr)
+		if (creature != NULL)
 			structure->revokePermission("ADMIN", creature->getObjectID());
 
 		//Update the cell permissions if the structure is private and a building.
-		if (structure->isBuildingObject()) {
+		if (!structure->isPublicStructure() && structure->isBuildingObject()) {
 			BuildingObject* buildingObject = cast<BuildingObject*>( structure);
 
-			buildingObject->setResidence(false);
+			buildingObject->updateCellPermissionsTo(targetCreature);
 
-			if (!structure->isPublicStructure()) {
-				buildingObject->updateCellPermissionsTo(targetCreature);
-
-				if (creature != nullptr)
-					buildingObject->updateCellPermissionsTo(creature);
-			}
+			if (creature != NULL)
+				buildingObject->updateCellPermissionsTo(creature);
 		}
 
-		if (creature != nullptr && !bForceTransfer) {
+		if (creature != NULL) {
 			StringIdChatParameter params("@player_structure:ownership_transferred_in"); //%TT has transfered ownership of the structure to you
 			params.setTT(creature->getFirstName());
 			targetCreature->sendSystemMessage(params);

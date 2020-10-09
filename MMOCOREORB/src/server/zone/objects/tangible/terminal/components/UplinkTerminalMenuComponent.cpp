@@ -7,81 +7,80 @@
 
 #include "UplinkTerminalMenuComponent.h"
 #include "server/zone/Zone.h"
+#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/packets/object/ObjectMenuResponse.h"
 #include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/player/FactionStatus.h"
+#include "server/zone/objects/structure/StructureObject.h"
+//#include "server/zone/objects/tangible/terminal/Terminal.h"
+//#include "server/zone/managers/structure/StructureManager.h"
+//#include "server/zone/objects/player/sessions/StructureSetAccessFeeSession.h"
 #include "server/zone/objects/building/BuildingObject.h"
+//#include "server/chat/StringIdChatParameter.h"
 #include "server/zone/managers/gcw/GCWManager.h"
 #include "server/zone/objects/tangible/TangibleObject.h"
+//#include "server/zone/objects/cell/CellObject.h"
 
-void UplinkTerminalMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, ObjectMenuResponse* menuResponse, CreatureObject* player) const {
+void UplinkTerminalMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, ObjectMenuResponse* menuResponse, CreatureObject* player) {
 
-	ManagedReference<BuildingObject*> building = sceneObject->getParentRecursively(SceneObjectType::FACTIONBUILDING).castTo<BuildingObject*>();
+	ManagedReference<BuildingObject*> building = cast<BuildingObject*>(sceneObject->getParentRecursively(SceneObjectType::FACTIONBUILDING).get().get());
 
-	if (building == nullptr || player->isDead() || player->isIncapacitated())
+	if (building == NULL || player->isDead() || player->isIncapacitated())
 		return;
 
 	Zone* zone = building->getZone();
 
-	if (zone == nullptr)
+	if(zone == NULL)
 		return;
 
 	GCWManager* gcwMan = zone->getGCWManager();
 
-	if (gcwMan == nullptr)
+	if(!gcwMan->canUseTerminals(player, building, sceneObject))
 		return;
 
-	if (!gcwMan->isBaseVulnerable(building))
-		return;
+	if(building->getFaction() != player->getFaction()) {
+		if( gcwMan->isBaseVulnerable(building) && !gcwMan->isUplinkJammed(building)) {
+			menuResponse->addRadialMenuItem(227, 3, "@hq:mnu_jam");
+		}
+	}
 
-	menuResponse->addRadialMenuItem(20, 3, "@hq:mnu_jam");
 }
 
-int UplinkTerminalMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, CreatureObject* player, byte selectedID) const {
-	if (sceneObject == nullptr || !sceneObject->isTangibleObject() || player == nullptr || player->isDead() || player->isIncapacitated() || selectedID != 20)
+int UplinkTerminalMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, CreatureObject* player, byte selectedID) {
+	if (sceneObject == NULL || !sceneObject->isTangibleObject() || player == NULL || player->isDead() || player->isIncapacitated())
 		return 0;
 
-	ManagedReference<BuildingObject*> building = sceneObject->getParentRecursively(SceneObjectType::FACTIONBUILDING).castTo<BuildingObject*>();
+	ManagedReference<BuildingObject*> building = cast<BuildingObject*>(sceneObject->getParentRecursively(SceneObjectType::FACTIONBUILDING).get().get());
 	ManagedReference<TangibleObject*> uplinkTerminal = cast<TangibleObject*>(sceneObject);
 
-	if (building == nullptr)
+	if(building == NULL)
 		return 1;
 
 	Zone* zone = sceneObject->getZone();
 
-	if (zone == nullptr)
+	if(zone == NULL)
 		return 1;
 
 	ManagedReference<GCWManager*> gcwMan = zone->getGCWManager();
 
-	if (gcwMan == nullptr)
+	if(gcwMan == NULL)
 		return 1;
 
-	if (!gcwMan->isBaseVulnerable(building))
+	if(!gcwMan->canUseTerminals(player, building, sceneObject))
 		return 1;
 
-	// Most of the string rows for these errors did not exist in 14.1, pulled string text from a different patch
-	if (!gcwMan->areOpposingFactions(player->getFaction(), building->getFaction())) {
-		player->sendSystemMessage("@faction/faction_hq/faction_hq_response:no_tamper"); // You are not an enemy of this structure. Why would you want to tamper?
-		return 1;
-	} else if (gcwMan->isUplinkJammed(building)) {
-		player->sendSystemMessage("It's no use! The uplink has been jammed.");
-		return 1;
-	} else if (player->isInCombat()) {
-		player->sendSystemMessage("You cannot jam this uplink while you are in combat!");
-		return 1;
-	} else if (uplinkTerminal->getParentID() != player->getParentID()) {
-		player->sendSystemMessage("You cannot jam the uplink if you are not even in the same room!");
-		return 1;
-	} else if (uplinkTerminal->getDistanceTo(player) > 15) {
-		player->sendSystemMessage("You are too far away from the uplink to continue jamming!");
-		return 1;
-	} else if (!player->hasSkill("combat_bountyhunter_investigation_02")) {
-		player->sendSystemMessage("Only a bounty hunter with intermediate surveillance skill could expect to jam this uplink!");
-		return 1;
+	if ( selectedID == 227 || selectedID == 20) {
+		if(player->getFaction() != building->getFaction()) {
+
+
+			if(player->hasSkill("combat_bountyhunter_investigation_02"))
+				gcwMan->sendJamUplinkMenu(player, building, uplinkTerminal);
+			else
+				player->sendSystemMessage("Only an experienced Bounty Hunter with Investigation experience could expect to jam the uplink");
+		}
+
 	}
-
-	gcwMan->sendJamUplinkMenu(player, building, uplinkTerminal);
 
 	return 0;
 }

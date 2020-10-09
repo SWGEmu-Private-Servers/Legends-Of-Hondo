@@ -18,15 +18,13 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		ManagedReference<CitySpecializationSession*> session = player->getActiveSession(SessionFacadeType::CITYSPEC).castTo<CitySpecializationSession*>();
 
-		if (session == nullptr)
+		if (session == NULL)
 			return;
 
-		if (!suiBox->isListBox() || cancelPressed || args->size() <= 0) {
+		if (!suiBox->isListBox() || player == NULL || cancelPressed || args->size() <= 0) {
 			session->cancelSession();
 			return;
 		}

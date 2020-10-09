@@ -9,8 +9,10 @@
 #define EMPTYHOPPERCALLBACK_H_
 
 #include "ObjectControllerMessageCallback.h"
+#include "server/zone/objects/installation/harvester/HarvesterObject.h"
 #include "GenericResponse.h"
 #include "server/zone/packets/harvester/HarvesterObjectMessage7.h"
+
 
 class EmptyHopperCallback : public MessageCallback {
 	uint64 harvesterId;
@@ -37,14 +39,14 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
-
-		if (player == nullptr)
+		ManagedReference<CreatureObject*> player = cast<CreatureObject*>( client->getPlayer().get().get());
+		
+		if (player == NULL)
 			return;
 
 		ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(harvesterId);
 
-		if (object == nullptr || !object->isInstallationObject()) {
+		if (object == NULL || !object->isInstallationObject()) {
 			//player->error("not parsing right");
 			return;
 		}
@@ -54,7 +56,7 @@ public:
 
 		InstallationObject* inso = cast<InstallationObject*>( object.get());
 		
-		if (inso == nullptr)
+		if (inso == NULL)
 			return;
 
 		/*if (!inso->isHarvesterObject())
@@ -74,18 +76,19 @@ public:
 				return;
 			}
 
+
 			SceneObject* inventory = player->getSlottedObject("inventory");
 
 			ManagedReference<ResourceSpawn*> resourceSpawn = server->getZoneServer()->getObject(resourceId).castTo<ResourceSpawn*>();
 
-			if (resourceSpawn == nullptr) {
+			if (resourceSpawn == NULL) {
 				player->error("wrong spawn id");
 				return;
 			}
 
 			ManagedReference<ResourceContainer*> container = inso->getContainerFromHopper(resourceSpawn);
 
-			if (container == nullptr) {
+			if (container == NULL) {
 				player->error("null container");
 				return;
 			}
@@ -116,7 +119,7 @@ public:
 
 				inso->updateResourceContainerQuantity(container, newQuantity, true);
 			} else if (byte1 == 0) {
-				if (!inventory->isContainerFullRecursive()) {
+				if (inventory->getCountableObjectsRecursive() < inventory->getContainerVolumeLimit()) {
 					Reference<ResourceSpawn*> resSpawn = container->getSpawnObject();
 					Locker locker(resSpawn);
 
@@ -141,8 +144,11 @@ public:
 		}
 
 		//if (byte1 == 0 && player->getInventory()->getUnequippedItemCount() >= InventoryImplementation::MAXUNEQUIPPEDCOUNT)
+
+
 	}
 };
+
 
 
 #endif /* EMPTYHOPPERCALLBACK_H_ */

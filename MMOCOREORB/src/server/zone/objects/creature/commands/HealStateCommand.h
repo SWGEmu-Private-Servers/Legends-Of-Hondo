@@ -5,31 +5,27 @@
 #ifndef HEALSTATECOMMAND_H_
 #define HEALSTATECOMMAND_H_
 
-#include "server/zone/objects/building/BuildingObject.h"
 #include "server/zone/objects/scene/SceneObject.h"
-#include "server/chat/StringIdChatParameter.h"
 #include "server/zone/objects/tangible/pharmaceutical/StatePack.h"
+#include "server/zone/objects/tangible/pharmaceutical/RangedStimPack.h"
 #include "server/zone/ZoneServer.h"
 #include "server/zone/managers/player/PlayerManager.h"
 #include "server/zone/objects/creature/events/InjuryTreatmentTask.h"
+#include "server/zone/objects/creature/buffs/Buff.h"
 #include "server/zone/objects/creature/buffs/DelayedBuff.h"
+#include "server/zone/packets/object/CombatAction.h"
 #include "server/zone/managers/collision/CollisionManager.h"
 
 class HealStateCommand : public QueueCommand {
 	float mindCost;
 	float range;
-	Vector<uint64> healableStates;
 public:
 
 	HealStateCommand(const String& name, ZoneProcessServer* server)
 		: QueueCommand(name, server) {
-
+		
 		mindCost = 20;
 		range = 6;
-		healableStates.add(CreatureState::STUNNED);
-		healableStates.add(CreatureState::DIZZY);
-		healableStates.add(CreatureState::BLINDED);
-		healableStates.add(CreatureState::INTIMIDATED);
 	}
 
 	void deactivateStateTreatment(CreatureObject* creature) const {
@@ -39,7 +35,7 @@ public:
 		if (creature->hasBuff(BuffCRC::FOOD_HEAL_RECOVERY)) {
 			DelayedBuff* buff = cast<DelayedBuff*>( creature->getBuff(BuffCRC::FOOD_HEAL_RECOVERY));
 
-			if (buff != nullptr) {
+			if (buff != NULL) {
 				float percent = buff->getSkillModifierValue("heal_recovery");
 
 				delay = round(delay * (100.0f - percent) / 100.0f);
@@ -94,7 +90,7 @@ public:
 	}
 
 	void doAnimations(CreatureObject* creature, CreatureObject* creatureTarget) const {
-		creatureTarget->playEffect("clienteffect/healing_healstate.cef", "");
+		creatureTarget->playEffect("clienteffect/healing_healdamage.cef", "");
 
 		if (creature == creatureTarget)
 			creature->doAnimation("heal_self");
@@ -102,29 +98,19 @@ public:
 			creature->doAnimation("heal_other");
 	}
 
-	bool canPerformSkill(CreatureObject* creature, CreatureObject* creatureTarget, StatePack* statePack, int mindCostNew) const {
+	bool canPerformSkill(CreatureObject* creature, CreatureObject* creatureTarget, StatePack* statePack) const {
 		if (!creature->canTreatStates()) {
 			creature->sendSystemMessage("@healing_response:healing_must_wait"); //You must wait before you can do that.
 			return false;
 		}
 
-		if (statePack == nullptr) {
+		if (statePack == NULL) {
 			creature->sendSystemMessage("@healing_response:healing_response_60"); //No valid medicine found.
-			return false;
-		}
-
-		if (creature != creatureTarget && checkForArenaDuel(creatureTarget)) {
-			creature->sendSystemMessage("@jedi_spam:no_help_target"); // You are not permitted to help that target.
 			return false;
 		}
 
 		if (!creatureTarget->isHealableBy(creature)) {
 			creature->sendSystemMessage("@healing:pvp_no_help");  //It would be unwise to help such a patient.
-			return false;
-		}
-
-		if (creature->getHAM(CreatureAttribute::MIND) < mindCostNew) {
-			creature->sendSystemMessage("@healing_response:not_enough_mind"); //You do not have enough mind to do that.
 			return false;
 		}
 
@@ -136,25 +122,29 @@ public:
 
 		int medicineUse = creature->getSkillMod("healing_ability");
 
-		if (inventory != nullptr) {
+		if (inventory != NULL) {
 			for (int i = 0; i < inventory->getContainerObjectsSize(); i++) {
 				SceneObject* object = inventory->getContainerObject(i);
 
-				if (!object->isPharmaceuticalObject())
+				if (!object->isTangibleObject())
 					continue;
 
-				PharmaceuticalObject* pharma = cast<PharmaceuticalObject*>(object);
+				TangibleObject* item = cast<TangibleObject*>( object);
 
-				if (pharma->isStatePack()) {
-					StatePack* statePack = cast<StatePack*>(pharma);
+				if (item->isPharmaceuticalObject()) {
+					PharmaceuticalObject* pharma = cast<PharmaceuticalObject*>( item);
 
-					if (statePack->getMedicineUseRequired() <= medicineUse && statePack->getState() == state)
-						return statePack;
+					if (pharma->isStatePack()) {
+						StatePack* statePack = cast<StatePack*>( pharma);
+
+						if (statePack->getMedicineUseRequired() <= medicineUse && statePack->getState() == state)
+							return statePack;
+					}
 				}
 			}
 		}
 
-		return nullptr;
+		return NULL;
 	}
 
 	void parseModifier(const String& modifier, uint64& state, uint64& objectId) const {
@@ -185,20 +175,19 @@ public:
 
 		ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(target);
 
-		if (object != nullptr) {
+		if (object != NULL) {
 			if (!object->isCreatureObject()) {
 				TangibleObject* tangibleObject = dynamic_cast<TangibleObject*>(object.get());
 
-				if (tangibleObject != nullptr && tangibleObject->isAttackableBy(creature)) {
+				if (tangibleObject != NULL && tangibleObject->isAttackableBy(creature)) {
 					object = creature;
 				} else {
 					creature->sendSystemMessage("@healing_response:healing_response_73"); //Target must be a player or a creature pet in order to heal a state.
 					return GENERALERROR;
 				}
 			}
-		} else {
+		} else
 			object = creature;
-		}
 
 		CreatureObject* creatureTarget = cast<CreatureObject*>( object.get());
 
@@ -212,86 +201,33 @@ public:
 
 		parseModifier(arguments.toString(), state, objectId);
 
-		SceneObject* inventory = creature->getSlottedObject("inventory");
-
-		ManagedReference<StatePack*> statePack = nullptr;
-
-		if(state != CreatureState::INVALID || objectId != 0) {
-			if (inventory != nullptr) {
-				statePack = inventory->getContainerObject(objectId).castTo<StatePack*>();
-			}
-
-			if (statePack == nullptr)
-				statePack = findStatePack(creature, state);
-		}else {
-			uint64 targetStateBitmask = creatureTarget->getStateBitmask();
-			for(int i=0; i<healableStates.size(); i++) {
-
-				uint64 healableState = healableStates.get(i);
-
-				if(!(targetStateBitmask & healableState))
-					continue;
-
-
-				state = healableState;
-				statePack = findStatePack(creature, healableState);
-
-				if(statePack != nullptr) {
-					break;
-				}
-			}
-
-			//if state is INVALID they had no healable states
-			//if it is valid but statePack is nullptr they had no valid medicine for *any* state and will error in canPerformSkill
-			if(state == CreatureState::INVALID) {
-				StringIdChatParameter stringId("healing", "no_state_to_heal"); // %TT has no state that you can heal.
-				stringId.setTT(creatureTarget->getDisplayedName());
-				creature->sendSystemMessage(stringId);
-				return GENERALERROR;
-			}
+		if (state == CreatureState::INVALID) {
+			creature->sendSystemMessage("@healing_response:healing_response_70"); //You must specify a valid state type.
+			return GENERALERROR;
 		}
 
-		int mindCostNew = creature->calculateCostAdjustment(CreatureAttribute::FOCUS, mindCost);
+		SceneObject* inventory = creature->getSlottedObject("inventory");
 
-		if (!canPerformSkill(creature, creatureTarget, statePack, mindCostNew))
+		ManagedReference<StatePack*> statePack = NULL;
+
+		if (inventory != NULL) {
+			statePack = inventory->getContainerObject(objectId).castTo<StatePack*>();
+		}
+
+		if (statePack == NULL)
+			statePack = findStatePack(creature, state);
+
+		if (!canPerformSkill(creature, creatureTarget, statePack))
 			return GENERALERROR;
 
-		if(!checkDistance(creature, creatureTarget, range))
+		if (!creatureTarget->isInRange(creature, range + creatureTarget->getTemplateRadius() + creature->getTemplateRadius()))
 			return TOOFAR;
 
 		PlayerManager* playerManager = server->getPlayerManager();
 
 		if (creature != creatureTarget && !CollisionManager::checkLineOfSight(creature, creatureTarget)) {
-			creature->sendSystemMessage("@healing:no_line_of_sight"); // You cannot see your target.
+			creature->sendSystemMessage("@container_error_message:container18");
 			return GENERALERROR;
-		}
-
-		if (creature->isPlayerCreature() && creatureTarget->getParentID() != 0 && creature->getParentID() != creatureTarget->getParentID()) {
-			Reference<CellObject*> targetCell = creatureTarget->getParent().get().castTo<CellObject*>();
-
-			if (targetCell != nullptr) {
-				if (!creatureTarget->isPlayerCreature()) {
-					auto perms = targetCell->getContainerPermissions();
-
-					if (!perms->hasInheritPermissionsFromParent()) {
-						if (!targetCell->checkContainerPermission(creature, ContainerPermissions::WALKIN)) {
-							creature->sendSystemMessage("@combat_effects:cansee_fail"); // You cannot see your target.
-							return GENERALERROR;
-						}
-					}
-				}
-
-				ManagedReference<SceneObject*> parentSceneObject = targetCell->getParent().get();
-
-				if (parentSceneObject != nullptr) {
-					BuildingObject* buildingObject = parentSceneObject->asBuildingObject();
-
-					if (buildingObject != nullptr && !buildingObject->isAllowedEntry(creature)) {
-						creature->sendSystemMessage("@combat_effects:cansee_fail"); // You cannot see your target.
-						return GENERALERROR;
-					}
-				}
-			}
 		}
 
 		if (statePack->getState() != state)
@@ -303,7 +239,7 @@ public:
 			else if (creatureTarget->isPlayerCreature()){
 				StringIdChatParameter msg("healing_response", "healing_response_74"); //%NT has no state of that type to heal.
 				msg.setTT(creatureTarget->getObjectID());
-				creature->sendSystemMessage(msg);
+				creature->sendSystemMessage(msg); 
 			} else {
 				StringBuffer message;
 				message << creatureTarget->getDisplayedName() << " has no state of that type to heal.";
@@ -312,14 +248,22 @@ public:
 
 			return GENERALERROR;
 		}
+		
+		// Base healing cost on Focus and skill.
+		float hondoMindCost = 120 / ((creature->getHAM(CreatureAttribute::FOCUS) + creature->getSkillMod("healing_injury_treatment")) / 1000 + 1);
 
-		creature->inflictDamage(creature, CreatureAttribute::MIND, mindCostNew, false);
+		if (creature->getHAM(CreatureAttribute::MIND) < (int)round(hondoMindCost)) {
+			creature->sendSystemMessage("@healing_response:not_enough_mind"); //You do not have enough mind to do that.
+			return GENERALERROR;
+		}
+
+		creature->inflictDamage(creature, CreatureAttribute::MIND, hondoMindCost, false);
 
 		sendStateMessage(creature, creatureTarget, state);
 
 		deactivateStateTreatment(creature);
 
-		if (statePack != nullptr) {
+		if (statePack != NULL) {
 			Locker locker(statePack);
 			statePack->decreaseUseCount();
 		}

@@ -9,11 +9,25 @@
 #include "server/zone/packets/object/ObjectMenuResponse.h"
 #include "server/zone/Zone.h"
 #include "server/zone/managers/player/PlayerManager.h"
+#include "server/zone/managers/creature/CreatureManager.h"
+#include "server/zone/objects/scene/SceneObject.h"
 
 void ShipControlDeviceImplementation::generateObject(CreatureObject* player) {
 	//info("generating ship", true);
 	//return;
+	
+	// Legend of Hondo
+	if (player->isDead() || player->isIncapacitated())
+		return;
 
+	if (!isASubChildOf(player))
+		return;
+
+	if (player->getParent() != NULL || player->isInCombat()) {
+		player->sendSystemMessage("@pet/pet_menu:cant_call_vehicle"); // You can only unpack vehicles while Outside and not in Combat.
+		return;
+	}
+	
 	ZoneServer* zoneServer = getZoneServer();
 
 	ManagedReference<TangibleObject*> controlledObject = this->controlledObject.get();
@@ -30,12 +44,16 @@ void ShipControlDeviceImplementation::generateObject(CreatureObject* player) {
 	controlledObject->transferObject(player, 5, true);
 	player->setState(CreatureState::PILOTINGSHIP);
 	//controlledObject->inflictDamage(player, 0, System::random(50), true);
+	
+	// Legend of Hondo
+	player->sendSystemMessage("Your ship protects you from danger, until you get out of it.");
+	player->setPvpStatusBitmask(CreatureFlag::NONE);
 
 	updateStatus(1);
 
 	PlayerObject* ghost = player->getPlayerObject();
 
-	if (ghost != nullptr)
+	if (ghost != NULL)
 		ghost->setTeleporting(true);
 }
 
@@ -44,7 +62,7 @@ void ShipControlDeviceImplementation::storeObject(CreatureObject* player, bool f
 
 	ManagedReference<TangibleObject*> controlledObject = this->controlledObject.get();
 
-	if (controlledObject == nullptr)
+	if (controlledObject == NULL)
 		return;
 
 	Locker clocker(controlledObject, player);
@@ -54,7 +72,7 @@ void ShipControlDeviceImplementation::storeObject(CreatureObject* player, bool f
 
 	Zone* zone = player->getZone();
 
-	if (zone == nullptr)
+	if (zone == NULL)
 		return;
 
 	zone->transferObject(player, -1, false);
@@ -62,6 +80,10 @@ void ShipControlDeviceImplementation::storeObject(CreatureObject* player, bool f
 	controlledObject->destroyObjectFromWorld(true);
 
 	transferObject(controlledObject, 4, true);
+	
+	// Legend of Hondo
+	player->setPvpStatusBitmask(CreatureFlag::PLAYER);
+	player->sendSystemMessage("Careful, you are no longer invulnerable!");
 	
 	updateStatus(0);
 }
@@ -81,7 +103,7 @@ void ShipControlDeviceImplementation::fillObjectMenuResponse(ObjectMenuResponse*
 bool ShipControlDeviceImplementation::canBeTradedTo(CreatureObject* player, CreatureObject* receiver, int numberInTrade) {
 	ManagedReference<SceneObject*> datapad = receiver->getSlottedObject("datapad");
 
-	if (datapad == nullptr)
+	if (datapad == NULL)
 		return false;
 
 	ManagedReference<PlayerManager*> playerManager = player->getZoneServer()->getPlayerManager();
@@ -92,7 +114,7 @@ bool ShipControlDeviceImplementation::canBeTradedTo(CreatureObject* player, Crea
 	for (int i = 0; i < datapad->getContainerObjectsSize(); i++) {
 		Reference<SceneObject*> obj =  datapad->getContainerObject(i).castTo<SceneObject*>();
 
-		if (obj != nullptr && obj->isShipControlDevice() ){
+		if (obj != NULL && obj->isShipControlDevice() ){
 			shipsInDatapad++;
 		}
 	}

@@ -21,9 +21,7 @@ public:
 		nodeName = name;
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!sui->isListBox() || cancelPressed)
 			return;
 
@@ -39,9 +37,9 @@ public:
 			if(index < 0 || index > 2)
 				return;
 
-			if(server != nullptr) {
-				uint64 objectID = creature->getObjectID();
-				Emote* emsg = new Emote(objectID, objectID, 0, 72, true, false);
+			if(server != NULL) {
+
+				Emote* emsg = new Emote(creature, creature, 0, 72, false);
 				creature->broadcastMessage(emsg, true);
 				creature->sendSystemMessage("@skl_use:sys_scan_begin"); // You begin to examine the environment for information.
 

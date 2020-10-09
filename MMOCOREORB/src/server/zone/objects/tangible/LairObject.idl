@@ -7,17 +7,11 @@ package server.zone.objects.tangible;
 import server.zone.objects.tangible.TangibleObject;
 import server.zone.objects.tangible.DespawnLairOnPlayerDisappear;
 import server.zone.objects.creature.CreatureObject;
-include server.zone.CloseObjectsVector;
-include system.thread.atomic.AtomicInteger;
-include engine.log.Logger;
-import server.zone.objects.scene.SceneObject;
-import server.zone.QuadTreeEntry;
+include engine.util.u3d.CloseObjectsVector;
+include engine.util.u3d.QuadTreeEntry;
 
-@json
 class LairObject extends TangibleObject {
-	@dereferenced
-	protected transient AtomicInteger numberOfPlayersInRange;
-
+	protected int numberOfPlayersInRange;
 	protected boolean despawnOnNoPlayersInRange;
 
 	protected transient DespawnLairOnPlayerDisappear despawnEvent;
@@ -28,12 +22,13 @@ class LairObject extends TangibleObject {
 		super.closeobjects = new CloseObjectsVector();
 		super.closeobjects.setNoDuplicateInsertPlan();
 
+		numberOfPlayersInRange = 0;
 		despawnOnNoPlayersInRange = false;
 	}
 
-	@dirty
+	@read
 	public int getNumberOfPlayersInRange() {
-		return numberOfPlayersInRange.get();
+		return numberOfPlayersInRange;
 	}
 
 	@read
@@ -55,7 +50,7 @@ class LairObject extends TangibleObject {
 		if (obj.isPlayerCreature()) {
 			CreatureObject creo = (CreatureObject) obj;
 			if (!creo.isInvisible()) {
-				numberOfPlayersInRange.increment();
+				numberOfPlayersInRange++;
 				clearDespawnEvent();
 			}
 		}
@@ -70,24 +65,24 @@ class LairObject extends TangibleObject {
 		if (obj.isPlayerCreature()) {
 			CreatureObject creo = (CreatureObject) obj;
 			if (!creo.isInvisible()) {
-				int val = numberOfPlayersInRange.decrement();
+				numberOfPlayersInRange = numberOfPlayersInRange - 1;
 
-				if (val <= 0 && despawnOnNoPlayersInRange)
+				if (numberOfPlayersInRange <= 0 && despawnOnNoPlayersInRange)
 					activateDespawnEvent();
 			}
 		}
 	}
 
 	public void activateDespawnEvent() {
-		if (despawnEvent)
+		if (despawnEvent != null)
 			return;
 
 		despawnEvent = new DespawnLairOnPlayerDisappear(this);
-		despawnEvent.schedule(300000);
+		despawnEvent.schedule(300000);		
 	}
 
 	public void clearDespawnEvent() {
-		if (!despawnEvent)
+		if (despawnEvent == null)
 			return;
 
 		despawnEvent.cancel();

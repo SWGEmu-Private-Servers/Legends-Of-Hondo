@@ -6,7 +6,6 @@
 #include "server/zone/managers/combat/CombatManager.h"
 #include "server/zone/managers/creature/CreatureManager.h"
 #include "server/zone/objects/creature/CreatureObject.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
 #include "engine/engine.h"
 
 class MilkCreatureTask : public Task {
@@ -107,11 +106,11 @@ public:
 		String restype = creature->getMilkType();
 		int quantity = creature->getMilk();
 
-		int quantityExtracted = Math::max(quantity, 3);
+		int quantityExtracted = MAX(quantity, 3);
 
 		ManagedReference<ResourceSpawn*> resourceSpawn = resourceManager->getCurrentSpawn(restype, player->getZone()->getZoneName());
 
-		if (resourceSpawn == nullptr) {
+		if (resourceSpawn == NULL) {
 			player->sendSystemMessage("Error: Server cannot locate a current spawn of " + restype);
 			return;
 		}
@@ -128,10 +127,26 @@ public:
 			quantityExtracted = int(quantityExtracted * 0.50f);
 		}
 
-		TransactionLog trx(TrxCode::HARVESTED, player, resourceSpawn);
-		resourceManager->harvestResourceToPlayer(trx, player, resourceSpawn, quantityExtracted);
+		resourceManager->harvestResourceToPlayer(player, resourceSpawn, quantityExtracted);
 
 		updateMilkState(CreatureManager::ALREADYMILKED);
+		
+		// Grant XP
+		ZoneServer* zoneServer = player->getZoneServer();
+		PlayerManager* playerManager = zoneServer->getPlayerManager();
+		CreatureTemplate* creatureTemplate = creature->getCreatureTemplate();
+		
+		int xp = player->getSkillMod("foraging");
+		if (xp > 125)
+			xp = 125; // Cap SEA usage at +25
+		
+		if (creatureTemplate != NULL)
+			xp += 5 * creatureTemplate->getLevel();
+		else
+			xp += 5 * creature->getLevel();
+		
+		playerManager->awardExperience(player, "camp", xp);
+		
 	}
 
 	void updateMilkState(const short milkState) {

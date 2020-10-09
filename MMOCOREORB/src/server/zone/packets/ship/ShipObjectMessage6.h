@@ -5,7 +5,7 @@
 #ifndef SHIPOBJECTMESSAGE6_H_
 #define SHIPOBJECTMESSAGE6_H_
 
-#include "server/zone/packets/tangible/TangibleObjectMessage6.h"
+#include "../../packets/tangible/TangibleObjectMessage6.h"
 #include "server/zone/objects/ship/ShipObject.h"
 
 class ShipObjectMessage6 : public TangibleObjectMessage6 {
@@ -23,8 +23,8 @@ public:
 		insertFloat(10.472f); // 7 Pitch Acceleration Max
 		insertFloat(5.23599f); //8 Roll Acceleration Max
 
-		insertFloat(0.1675516f); //9 Yaw Acceleration
-		insertFloat(0.1675516f); //10 Pitch Acceleration
+		insertFloat(0.1675516); //9 Yaw Acceleration
+		insertFloat(0.1675516); //10 Pitch Acceleration
 		insertFloat(0.907571f); //11 Roll Acceleration
 
 

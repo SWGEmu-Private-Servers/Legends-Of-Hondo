@@ -25,38 +25,48 @@ public:
 
 		ManagedReference<SceneObject*> parent = creature->getParent().get();
 
-		if (parent == nullptr || !parent->isMount()) {
+		if (parent == NULL || !parent->isMount()) {
 			creature->sendSystemMessage("@combat_effects:cant_stop_gallop_not_mounted"); // You can't stop galloping if you aren't mounted.
 			return GENERALERROR;
 		}
 
 		ManagedReference<CreatureObject*> mount = cast<CreatureObject*>(parent.get());
-		if (mount == nullptr)
+		if (mount == NULL)
 			return GENERALERROR;
 
 		Locker crossLocker(mount, creature);
 
 		uint32 crc = STRING_HASHCODE("gallop");
 
-		if (!mount->hasBuff(crc)) {
+		if (!creature->hasBuff(crc)) {
+			if (mount->hasBuff(crc))
+				mount->removeBuff(crc);
+
 			creature->sendSystemMessage("@combat_effects:cant_stop_galloping_not_galloping"); // You can't stop galloping if you aren't already galloping.
+			return GENERALERROR;
+		} else if (!mount->hasBuff(crc)) {
+			creature->removeBuff(crc);
+
 			return GENERALERROR;
 		}
 
 		PetManager* petManager = server->getZoneServer()->getPetManager();
 		ManagedReference<PetControlDevice*> pcd = mount->getControlDevice().get().castTo<PetControlDevice*>();
-		if (petManager == nullptr || pcd == nullptr)
+		if (petManager == NULL || pcd == NULL)
 			return GENERALERROR;
 
 		SharedObjectTemplate* objectTemplate = pcd->getObjectTemplate();
-		if (objectTemplate == nullptr)
+		if (objectTemplate == NULL)
 			return GENERALERROR;
 
 		MountSpeedData* mountSpeedData = petManager->getMountSpeedData(objectTemplate->getAppearanceFilename());
-		if (mountSpeedData == nullptr)
+		if (mountSpeedData == NULL)
 			return GENERALERROR;
 
 		int cooldown = mountSpeedData->getGallopCooldown();
+
+		if (creature->getPlayerObject()->isPrivileged())
+			cooldown = 5;
 
 		creature->removeBuff(crc);
 		mount->removeBuff(crc);

@@ -3,7 +3,7 @@
 #define PETSTORECOMMAND_H_
 
 #include "server/zone/objects/creature/commands/QueueCommand.h"
-#include "server/zone/objects/creature/ai/AiAgent.h"
+#include "server/zone/objects/creature/AiAgent.h"
 
 class PetStoreCommand : public QueueCommand {
 public:
@@ -14,16 +14,16 @@ public:
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
 
-		ManagedReference<PetControlDevice*> controlDevice = creature->getControlDevice().get().castTo<PetControlDevice*>();
-		if (controlDevice == nullptr)
+		ManagedReference<PetControlDevice*> controlDevice = creature->getControlDevice().castTo<PetControlDevice*>();
+		if (controlDevice == NULL)
 			return GENERALERROR;
 
 		ManagedReference<AiAgent*> pet = cast<AiAgent*>(creature);
-		if( pet == nullptr )
+		if( pet == NULL )
 			return GENERALERROR;
 
 		ManagedReference<CreatureObject*> player = pet->getLinkedCreature().get();
-		if (player == nullptr || !player->isPlayerCreature() ) {
+		if (player == NULL || !player->isPlayerCreature() ) {
 			return GENERALERROR;
 		}
 		Locker clocker(player, pet);

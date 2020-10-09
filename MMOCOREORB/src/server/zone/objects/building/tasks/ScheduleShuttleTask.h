@@ -23,7 +23,7 @@ public:
 
 		ManagedReference<CreatureObject*> strongReference = shuttleObject.get();
 
-		if (strongReference == nullptr) {
+		if (strongReference == NULL) {
 			return;
 		}
 
@@ -31,13 +31,13 @@ public:
 
 		ManagedReference<PlanetManager*> planetManager = zone->getPlanetManager();
 
-		if (planetManager == nullptr) {
+		if (planetManager == NULL) {
 			return;
 		}
 
-		ManagedReference<CityRegion*> cityRegion = strongReference->getCityRegion().get();
+		ManagedReference<CityRegion*> cityRegion = strongReference->getCityRegion();
 
-		if ((cityRegion != nullptr) && (cityRegion->getMayorID() != 0)) {
+		if ((cityRegion != NULL) && (cityRegion->getMayorID() != 0)) {
 			float x = strongReference->getWorldPositionX();
 			float y = strongReference->getWorldPositionY();
 			float z = strongReference->getWorldPositionZ();
@@ -57,21 +57,13 @@ public:
 		} else {
 			Reference<PlanetTravelPoint*> ptp = planetManager->getNearestPlanetTravelPoint(strongReference, 128.f);
 
-			if (ptp != nullptr) {
-				auto oldShuttle = ptp->getShuttle();
+			if (ptp != NULL) {
+				if (ptp->isInterplanetary())
+					planetManager->scheduleShuttle(strongReference, PlanetManager::STARPORT);
+				else
+					planetManager->scheduleShuttle(strongReference, PlanetManager::SHUTTLEPORT);
 
-				if (oldShuttle == nullptr) {
-					if (ptp->isInterplanetary())
-						planetManager->scheduleShuttle(strongReference, PlanetManager::STARPORT);
-					else
-						planetManager->scheduleShuttle(strongReference, PlanetManager::SHUTTLEPORT);
-
-					ptp->setShuttle(strongReference);
-
-				} else if (oldShuttle != strongReference) {
-					strongReference->destroyObjectFromWorld(true);
-					strongReference->destroyObjectFromDatabase(true);
-				}
+				ptp->setShuttle(strongReference);
 			}
 		}
 	}

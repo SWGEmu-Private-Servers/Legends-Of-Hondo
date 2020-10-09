@@ -27,6 +27,12 @@ public:
 		if (!creature->isPlayerCreature())
 			return GENERALERROR;
 
+		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
+
+		//Check privileges
+		if (ghost == NULL || !ghost->isPrivileged())
+			return INSUFFICIENTPERMISSION;
+
 		StringTokenizer args(arguments.toString());
 
 		//Explain syntax
@@ -68,15 +74,13 @@ public:
 		SortedVector<ManagedReference<QuadTreeEntry*> > closeObjects;
 		Zone* zone = creature->getZone();
 
-		if (creature->getCloseObjects() == nullptr || range > ZoneServer::CLOSEOBJECTRANGE) {
-#ifdef COV_DEBUG
+		if (creature->getCloseObjects() == NULL) {
 			creature->info("Null closeobjects vector in BroadcastAreaCommand::doQueueCommand", true);
-#endif
 			zone->getInRangeObjects(creature->getPositionX(), creature->getPositionY(), range, &closeObjects, true);
 		}
 		else {
 			CloseObjectsVector* closeVector = (CloseObjectsVector*) creature->getCloseObjects();
-			closeVector->safeCopyReceiversTo(closeObjects, CloseObjectsVector::PLAYERTYPE);
+			closeVector->safeCopyTo(closeObjects);
 		}
 
 		//Command Options
@@ -139,7 +143,7 @@ public:
 					if (targetObject->isPlayerCreature() && creature->isInRange(targetObject, range)) {
 						CreatureObject* targetPlayer = cast<CreatureObject*>(targetObject);
 
-						if (targetPlayer->getFaction() == faction.hashCode() || targetPlayer->getPlayerObject()->hasGodMode())
+						if (targetPlayer->getFaction() == faction.hashCode() || targetPlayer->getPlayerObject()->isPrivileged())
 							targetPlayer->sendSystemMessage(type + message);
 					}
 				}
@@ -170,7 +174,7 @@ public:
 					if (targetObject->isPlayerCreature() && creature->isInRange(targetObject, range)) {
 						CreatureObject* targetPlayer = cast<CreatureObject*>(targetObject);
 
-						if (targetPlayer->getFaction() == faction.hashCode() || targetPlayer->getPlayerObject()->hasGodMode())
+						if (targetPlayer->getFaction() == faction.hashCode() || targetPlayer->getPlayerObject()->isPrivileged())
 							targetPlayer->sendSystemMessage(type + message);
 					}
 				}

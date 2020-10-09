@@ -5,6 +5,8 @@
 #ifndef SETSPEEDCOMMAND_H_
 #define SETSPEEDCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+
 class SetSpeedCommand : public QueueCommand {
 public:
 
@@ -23,6 +25,11 @@ public:
 
 		if (!creature->isPlayerCreature())
 			return GENERALERROR;
+
+		PlayerObject* ghost = creature->getPlayerObject();
+
+		if (!ghost->isPrivileged())
+			return INSUFFICIENTPERMISSION;
 
 		float speed = 0.f;
 		int duration = 30;

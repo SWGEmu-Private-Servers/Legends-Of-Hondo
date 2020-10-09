@@ -5,6 +5,9 @@
 #ifndef BROADCASTCOMMAND_H_
 #define BROADCASTCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/objects/player/PlayerObject.h"
+
 class BroadcastCommand : public QueueCommand {
 public:
 
@@ -23,6 +26,12 @@ public:
 
 		if (!creature->isPlayerCreature())
 			return GENERALERROR;
+
+		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
+
+		//Check privileges
+		if (ghost == NULL || !ghost->isPrivileged())
+			return INSUFFICIENTPERMISSION;
 
 		StringTokenizer args(arguments.toString());
 

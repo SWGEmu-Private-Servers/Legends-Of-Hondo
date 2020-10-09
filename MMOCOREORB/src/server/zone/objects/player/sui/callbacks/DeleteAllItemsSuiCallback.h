@@ -10,16 +10,14 @@
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
 #include "server/zone/objects/player/PlayerObject.h"
-#include "server/zone/objects/player/sui/callbacks/DeleteAllItemsConfirmSuiCallback.h"
+#include "server/zone/objects/player//sui/callbacks/DeleteAllItemsConfirmSuiCallback.h"
 
 class DeleteAllItemsSuiCallback : public SuiCallback {
 public:
 	DeleteAllItemsSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!sui->isMessageBox() || cancelPressed)
 			return;
 
@@ -29,7 +27,7 @@ public:
 
 		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
 
-		if (ghost != nullptr) {
+		if (ghost != NULL) {
 			creature->sendMessage(sui->generateMessage());
 			ghost->addSuiBox(sui);
 		}

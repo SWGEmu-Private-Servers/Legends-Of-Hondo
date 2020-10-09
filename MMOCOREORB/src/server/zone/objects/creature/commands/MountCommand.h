@@ -6,29 +6,21 @@
 #define MOUNTCOMMAND_H_
 
 #include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/objects/creature/VehicleObject.h"
 #include "server/zone/managers/objectcontroller/ObjectController.h"
 
 class MountCommand : public QueueCommand {
-	Vector<uint32> restrictedBuffCRCs;
-	uint32 gallopCRC;
 public:
 
 	MountCommand(const String& name, ZoneProcessServer* server)
 		: QueueCommand(name, server) {
-		gallopCRC = STRING_HASHCODE("gallop");
-
-		restrictedBuffCRCs.add(STRING_HASHCODE("burstrun"));
-		restrictedBuffCRCs.add(STRING_HASHCODE("retreat"));
-		restrictedBuffCRCs.add(BuffCRC::JEDI_FORCE_RUN_1);
-		restrictedBuffCRCs.add(BuffCRC::JEDI_FORCE_RUN_2);
-		restrictedBuffCRCs.add(BuffCRC::JEDI_FORCE_RUN_3);
 
 	}
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
 		ZoneServer* zoneServer = server->getZoneServer();
 
-		if (zoneServer == nullptr || !creature->checkCooldownRecovery("mount_dismount"))
+		if (zoneServer == NULL || !creature->checkCooldownRecovery("mount_dismount"))
 			return GENERALERROR;
 
 		if (creature->isRidingMount()) {
@@ -43,7 +35,7 @@ public:
 
 		ManagedReference<SceneObject*> object = zoneServer->getObject(target);
 
-		if (object == nullptr) {
+		if (object == NULL) {
 			return INVALIDTARGET;
 		}
 
@@ -66,22 +58,12 @@ public:
 		if (!vehicle->isInRange(creature, 5))
 			return GENERALERROR;
 
-		if (creature->getParent() != nullptr || vehicle->getParent() != nullptr)
+		if (creature->getParent() != NULL || vehicle->getParent() != NULL)
 			return GENERALERROR;
 
-		if (vehicle->isDisabled()) {
+		if (vehicle->isDestroyed()) {
 			creature->sendSystemMessage("@pet/pet_menu:cant_mount_veh_disabled");
 			return GENERALERROR;
-		}
-
-		if (vehicle->isIncapacitated())
-			return GENERALERROR;
-
-		if (vehicle->isDead())
-			return GENERALERROR;
-
-		if (vehicle->getPosture() == CreaturePosture::LYINGDOWN || vehicle->getPosture() == CreaturePosture::SITTING) {
-			vehicle->setPosture(CreaturePosture::UPRIGHT);
 		}
 
 		vehicle->setState(CreatureState::MOUNTEDCREATURE);
@@ -93,94 +75,55 @@ public:
 			return GENERALERROR;
 		}
 
-		creature->synchronizeCloseObjects();
 		creature->setState(CreatureState::RIDINGMOUNT);
 		creature->clearState(CreatureState::SWIMMING);
 
 		creature->updateCooldownTimer("mount_dismount", 2000);
 
-		//We need to crosslock buff and creature below
-		clocker.release();
-
-		for(int i=0; i<restrictedBuffCRCs.size(); i++) {
-
-			uint32 buffCRC = restrictedBuffCRCs.get(i);
-
-			if(creature->hasBuff(buffCRC)) {
-				ManagedReference<Buff*> buff = creature->getBuff(buffCRC);
-
-				Locker lock(buff, creature);
-
-				buff->removeAllModifiers();
-			}
+		uint32 crc = STRING_HASHCODE("gallop");
+		if (creature->hasBuff(crc) && vehicle->hasBuff(crc)) {
+			//Clear the active negation of the gallop buff.
+			creature->setSpeedMultiplierMod(1.f);
+			creature->setAccelerationMultiplierMod(1.f);
+			vehicle->setSpeedMultiplierMod(1.f);
+			vehicle->setAccelerationMultiplierMod(1.f);
 		}
 
-		if(creature->hasBuff(gallopCRC)) {
-			creature->removeBuff(gallopCRC); // This should "fix" any players that have the old gallop buff
+		if (creature->hasBuff(STRING_HASHCODE("burstrun"))
+				|| creature->hasBuff(STRING_HASHCODE("retreat"))) {
+			//Negate effect of the active burst run or retreat buff. The negation will be cleared automatically when the buff is deactivated.
+			creature->setSpeedMultiplierMod(1.f / 1.822f);
+			creature->setAccelerationMultiplierMod(1.f / 1.822f);
 		}
 
-		//We released this crosslock before to remove player buffs
-		Locker vehicleLocker(vehicle, creature);
-
-		if (vehicle->hasBuff(gallopCRC)) {
-			Core::getTaskManager()->executeTask([=] () {
-				uint32 gallopCRC = STRING_HASHCODE("gallop");
-				Locker lock(vehicle);
-
-				ManagedReference<Buff*> gallop = vehicle->getBuff(gallopCRC);
-				Locker blocker(gallop, vehicle);
-
-				if (gallop != nullptr) {
-					gallop->applyAllModifiers();
-				}
-			}, "AddGallopModsLambda");
-		}
-
-		// Speed hack buffer
 		SpeedMultiplierModChanges* changeBuffer = creature->getSpeedMultiplierModChanges();
 		const int bufferSize = changeBuffer->size();
 
-		// Drop old change off the buffer
 		if (bufferSize > 5) {
 			changeBuffer->remove(0);
 		}
 
-		// get vehicle speed
 		float newSpeed = vehicle->getRunSpeed();
-		float newAccel = vehicle->getAccelerationMultiplierMod();
-		float newTurn = vehicle->getTurnScale();
 
-		// get animal mount speeds
 		if (vehicle->isMount()) {
 			PetManager* petManager = server->getZoneServer()->getPetManager();
 
-			if (petManager != nullptr) {
+			if (petManager != NULL) {
 				newSpeed = petManager->getMountedRunSpeed(vehicle);
 			}
 		}
 
-		// add speed multiplier mod for existing buffs
-		if(vehicle->getSpeedMultiplierMod() != 0)
-			newSpeed *= vehicle->getSpeedMultiplierMod();
-
-		// Add our change to the buffer history
 		changeBuffer->add(SpeedModChange(newSpeed / creature->getRunSpeed()));
 
 		creature->updateToDatabase();
 
-		// Force Sensitive SkillMods
-		if (vehicle->isVehicleObject()) {
-			newAccel += creature->getSkillMod("force_vehicle_speed");
-			newTurn += creature->getSkillMod("force_vehicle_control");
-		}
-
 		creature->setRunSpeed(newSpeed);
-		creature->setTurnScale(newTurn, true);
-		creature->setAccelerationMultiplierMod(newAccel, true);
 		creature->addMountedCombatSlow();
+
 
 		return SUCCESS;
 	}
+
 };
 
 #endif //MOUNTCOMMAND_H_

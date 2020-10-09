@@ -8,7 +8,7 @@
 #ifndef STOMACHREQUESTMESSAGE_H_
 #define STOMACHREQUESTMESSAGE_H_
 
-#include "server/zone/packets/MessageCallback.h"
+#include "../MessageCallback.h"
 #include "server/zone/packets/player/PlayerObjectDeltaMessage9.h"
 
 class StomachRequestMessageCallback : public MessageCallback {
@@ -22,12 +22,12 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> player = cast<CreatureObject*>(client->getPlayer().get().get());
 
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
-		Reference<PlayerObject*> playerObject = player->getPlayerObject();
+		Reference<PlayerObject*> playerObject = player->getSlottedObject("ghost").castTo<PlayerObject*>();
 
 		PlayerObjectDeltaMessage9* delta = new  PlayerObjectDeltaMessage9(playerObject);
 		delta->updateStomachFilling();

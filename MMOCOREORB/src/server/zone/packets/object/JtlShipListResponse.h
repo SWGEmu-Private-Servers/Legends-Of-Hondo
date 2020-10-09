@@ -10,6 +10,11 @@
 
 #include "ObjectControllerMessage.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "ObjectControllerMessageCallback.h"
+#include "server/zone/objects/area/ActiveArea.h"
+#include "server/zone/objects/region/Region.h"
+#include "server/zone/objects/intangible/ShipControlDevice.h"
+#include "server/zone/objects/ship/ShipObject.h"
 
 //TODO: This is very unsafe still...
 class JtlShipListResponse : public ObjectControllerMessage {
@@ -31,7 +36,7 @@ public:
 		/* TODO: Better method of this.
 		ManagedReference<ActiveArea*> region = terminal->getActiveRegion();
 
-		if (region != nullptr && region->isRegion())
+		if (region != NULL && region->isRegion())
 			insertAscii(region->getDisplayedName());
 		else
 			insertAscii(terminal->getZone()->getZoneName());
@@ -48,7 +53,7 @@ public:
 			if (datapadObject->getGameObjectType() == SceneObjectType::SHIPCONTROLDEVICE) {
 				ManagedReference<ShipControlDevice*> shipControlDevice = cast<ShipControlDevice*>( datapadObject.get());
 
-				if (shipControlDevice->getControlledObject() != nullptr) {
+				if (shipControlDevice->getControlledObject() != NULL) {
 					ManagedReference<ShipObject*> ship = cast<ShipObject*>( shipControlDevice->getControlledObject());
 
 					insertLong(ship->getObjectID());

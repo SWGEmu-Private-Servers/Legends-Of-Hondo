@@ -8,7 +8,8 @@
 #ifndef SKILLINFO_H_
 #define SKILLINFO_H_
 
-#include "templates/datatables/DataTableRow.h"
+#include "engine/engine.h"
+#include "server/zone/templates/datatables/DataTableRow.h"
 
 class SkillInfo : public Object {
 	WeakReference<SkillInfo*> parentSkill;
@@ -44,57 +45,16 @@ class SkillInfo : public Object {
 
 public:
 	SkillInfo() {
-		skillsRequiredCount = 0;
-		jediStateRequired = 0;
-		apprenticeshipsRequired = 0;
-		xpCost = 0;
-		xpCap = 0;
-		moneyRequired = 0;
-		pointsRequired = 0;
-		graphType = 0;
 
-		searchable = false;
-		godOnly = false;
-		isTitle = false;
-		isProfession = false;
-		isHidden = false;
 	}
 
 	SkillInfo(const String& name, SkillInfo* parent) {
 		skillName = name;
 		parentSkill = parent;
-
-		skillsRequiredCount = 0;
-		jediStateRequired = 0;
-		apprenticeshipsRequired = 0;
-		xpCost = 0;
-		xpCap = 0;
-		moneyRequired = 0;
-		pointsRequired = 0;
-		graphType = 0;
-
-		searchable = false;
-		godOnly = false;
-		isTitle = false;
-		isProfession = false;
-		isHidden = false;
 	}
 
 	SkillInfo(const SkillInfo& si) : Object() {
-		skillsRequiredCount = si.skillsRequiredCount;
-		jediStateRequired = si.jediStateRequired;
-		apprenticeshipsRequired = si.apprenticeshipsRequired;
-		xpCost = si.xpCost;
-		xpCap = si.xpCap;
-		moneyRequired = si.moneyRequired;
-		pointsRequired = si.pointsRequired;
-		graphType = si.graphType;
 
-		searchable = si.searchable;
-		godOnly = si.godOnly;
-		isTitle = si.isTitle;
-		isProfession = si.isProfession;
-		isHidden = si.isHidden;
 	}
 
 	SkillInfo& operator= (const SkillInfo& si) {

@@ -8,8 +8,9 @@
 #ifndef FACTIONREQUESTMESSAGECALLBACK_H_
 #define FACTIONREQUESTMESSAGECALLBACK_H_
 
-#include "server/zone/packets/MessageCallback.h"
+#include "engine/engine.h"
 #include "FactionResponseMessage.h"
+
 
 class FactionRequestMessageCallback : public MessageCallback {
 public:
@@ -22,9 +23,9 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> object = client->getPlayer();
+		CreatureObject* object = cast<CreatureObject*>( client->getPlayer().get().get());
 
-		if (object == nullptr)
+		if (object == NULL)
 			return;
 
 		Locker _locker(object);

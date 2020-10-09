@@ -19,8 +19,7 @@ public:
 	StructureSelectSignSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 	}
 
-	void run(CreatureObject* creature, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* creature, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 
 		if (!suiBox->isListBox() || cancelPressed)
 			return;
@@ -28,21 +27,17 @@ public:
 		if (args->size() < 1)
 			return;
 
-		ManagedReference<SceneObject*> object = suiBox->getUsingObject().get();
-		if (object == nullptr || !object->isBuildingObject())
+		ManagedReference<SceneObject*> object = suiBox->getUsingObject();
+		if (object == NULL || !object->isBuildingObject())
 			return;
 
 		SuiListBox* suiListBox = cast<SuiListBox*>( suiBox);
 		int index = Integer::valueOf(args->get(0).toString());
-
-		if (index < 0 || index >= suiListBox->getMenuSize())
-			return;
-
 		String suiItem = suiListBox->getMenuItemName(index);
 
 		StructureObject* structure = cast<StructureObject*>(object.get());
 		ManagedReference<Zone*> zone = structure->getZone();
-		if (zone == nullptr)
+		if (zone == NULL)
 			return;
 
 		//Creature is already locked (done in handleSuiEventNotification in SuiManager).

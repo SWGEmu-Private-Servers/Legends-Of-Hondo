@@ -40,10 +40,10 @@ namespace scene {
 		int getWorldPositionZ(lua_State* L);
 		int getWorldPositionY(lua_State* L);
 		int getObjectID(lua_State* L);
+        int getObjectIDAsString(lua_State* L);
 		int getParentID(lua_State* L);
 		int isInRange(lua_State* L);
 		int isInRangeWithObject(lua_State* L);
-		int isInRangeWithObject3d(lua_State* L);
 		int wlock(lua_State* L);
 		int unlock(lua_State* L);
 		int getServerObjectCRC(lua_State* L);
@@ -51,12 +51,8 @@ namespace scene {
 		int getDistanceTo(lua_State* L);
 		int getDistanceToPosition(lua_State* L);
 		int getContainerObject(lua_State* L);
-		int getContainerObjectById(lua_State* L);
 		int getContainerObjectsSize(lua_State* L);
-		int getCountableObjectsRecursive(lua_State* L);
 		int getContainerVolumeLimit(lua_State* L);
-		int isContainerFull(lua_State* L);
-		int isContainerFullRecursive(lua_State* L);
 		int getSlottedObject(lua_State* L);
 		int transferObject(lua_State* L);
 		//int removeObject(lua_State* L);
@@ -78,6 +74,8 @@ namespace scene {
 		int setCustomObjectName(lua_State* L);
 		int getDisplayedName(lua_State* L);
 		int getObjectName(lua_State* L);
+		int getContainerObjectById(lua_State* L);
+		int hasFullContainerObjects(lua_State* L);
 		int setDirectionalHeading(lua_State* L);
 		int getTemplateObjectPath(lua_State* L);
 		int teleport(lua_State* L);
@@ -96,13 +94,6 @@ namespace scene {
 		int isASubChildOf(lua_State* L);
 		int isOwned(lua_State* L);
 		int playEffect(lua_State* L);
-		int addPendingTask(lua_State* L);
-		int cancelPendingTask(lua_State* L);
-		int getChildObject(lua_State* L);
-		int getContainerOwnerID(lua_State* L);
-		int info(lua_State* L);
-		int getPlayersInRange(lua_State* L);
-		int isInNavMesh(lua_State* L);
 
 	protected:
 		SceneObject* _getRealSceneObject() {

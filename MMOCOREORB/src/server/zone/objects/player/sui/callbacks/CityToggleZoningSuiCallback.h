@@ -3,6 +3,7 @@
 #define CITYTOGGLEZONINGSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/objects/player/sui/messagebox/SuiMessageBox.h"
 
 namespace server {
 namespace zone {
@@ -28,25 +29,18 @@ public:
 		cityRegion = city;
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		ManagedReference<CityRegion*> city = cityRegion.get();
 
-		if (city == nullptr || !suiBox->isMessageBox() || player == nullptr || cancelPressed) {
+		if (city == NULL || !suiBox->isMessageBox() || player == NULL || cancelPressed) {
 			return;
 		}
 
-		PlayerObject* ghost = player->getPlayerObject();
-
-		if (ghost == nullptr)
-			return;
-
-		if (!city->isMayor(player->getObjectID()) && !ghost->isAdmin()) {
+		if (!city->isMayor(player->getObjectID())) {
 			return;
 		}
 
-		if (!player->hasSkill("social_politician_novice") && !ghost->isAdmin()) {
+		if (!player->hasSkill("social_politician_novice")) {
 			player->sendSystemMessage("@city/city:zoning_skill"); // You must be a Politician to enable city zoning.
 			return;
 		}

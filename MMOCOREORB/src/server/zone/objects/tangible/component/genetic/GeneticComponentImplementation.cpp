@@ -3,58 +3,62 @@
 		See file COPYING for copying conditions.*/
 
 #include "server/zone/objects/tangible/component/genetic/GeneticComponent.h"
-#include "templates/tangible/SharedWeaponObjectTemplate.h"
+#include "server/zone/objects/manufactureschematic/ManufactureSchematic.h"
+#include "server/zone/objects/tangible/weapon/WeaponObject.h"
+#include "server/zone/templates/mobile/CreatureTemplate.h"
+#include "server/zone/managers/crafting/labratories/Genetics.h"
 
 void GeneticComponentImplementation::initializeTransientMembers() {
 	ComponentImplementation::initializeTransientMembers();
 }
 
 void GeneticComponentImplementation::resetResists(CraftingValues* values) {
-	if (stunResist > 0 && !isSpecialResist(SharedWeaponObjectTemplate::STUN)) {
+	if (stunResist > 0 && !isSpecialResist(WeaponObject::STUN)) {
 		stunResist = 0;
 		values->setCurrentValue("dna_comp_armor_stun", 0);
 		values->setCurrentPercentage("dna_comp_armor_stun",0);
 	}
-	if (kinResist > 0  && !isSpecialResist(SharedWeaponObjectTemplate::KINETIC)) {
+	if (kinResist > 0  && !isSpecialResist(WeaponObject::KINETIC)) {
 		kinResist = 0;
 		values->setCurrentValue("dna_comp_armor_kinetic", 0);
 		values->setCurrentPercentage("dna_comp_armor_kinetic",0);
 	}
-	if (saberResist > 0 && !isSpecialResist(SharedWeaponObjectTemplate::LIGHTSABER)) {
+	if (saberResist > 0 && !isSpecialResist(WeaponObject::LIGHTSABER)) {
 		saberResist = 0;
 		values->setCurrentValue("dna_comp_armor_saber", 0);
 		values->setCurrentPercentage("dna_comp_armor_saber",0);
 	}
-	if (elecResist > 0 && !isSpecialResist(SharedWeaponObjectTemplate::ELECTRICITY)){
+	if (elecResist > 0 && !isSpecialResist(WeaponObject::ELECTRICITY)){
 		elecResist = 0;
 		values->setCurrentValue("dna_comp_armor_electric", 0);
 		values->setCurrentPercentage("dna_comp_armor_electric",0);
 	}
-	if (acidResist > 0 && !isSpecialResist(SharedWeaponObjectTemplate::ACID)) {
+	if (acidResist > 0 && !isSpecialResist(WeaponObject::ACID)) {
 		acidResist = 0;
 		values->setCurrentValue("dna_comp_armor_acid", 0);
 		values->setCurrentPercentage("dna_comp_armor_acid",0);
 	}
-	if (coldResist > 0 && !isSpecialResist(SharedWeaponObjectTemplate::COLD)) {
+	if (coldResist > 0 && !isSpecialResist(WeaponObject::COLD)) {
 		coldResist = 0;
 		values->setCurrentValue("dna_comp_armor_cold", 0);
 		values->setCurrentPercentage("dna_comp_armor_cold",0);
 	}
-	if (heatResist > 0 && !isSpecialResist(SharedWeaponObjectTemplate::HEAT)) {
+	if (heatResist > 0 && !isSpecialResist(WeaponObject::HEAT)) {
 		heatResist = 0;
 		values->setCurrentValue("dna_comp_armor_heat", 0);
 		values->setCurrentPercentage("dna_comp_armor_heat",0);
 	}
-	if (blastResist > 0 && !isSpecialResist(SharedWeaponObjectTemplate::BLAST)) {
+	if (blastResist > 0 && !isSpecialResist(WeaponObject::BLAST)) {
 		blastResist = 0;
 		values->setCurrentValue("dna_comp_armor_blast", 0);
 		values->setCurrentPercentage("dna_comp_armor_blast",0);
 	}
-	if (energyResist > 0 && !isSpecialResist(SharedWeaponObjectTemplate::ENERGY)) {
+	if (energyResist > 0 && !isSpecialResist(WeaponObject::ENERGY)) {
 		energyResist = 0;
 		values->setCurrentValue("dna_comp_armor_energy", 0);
 		values->setCurrentPercentage("dna_comp_armor_energy",0);
 	}
+
 }
 
 void GeneticComponentImplementation::updateCraftingValues(CraftingValues* values, bool firstUpdate) {
@@ -79,23 +83,23 @@ void GeneticComponentImplementation::updateCraftingValues(CraftingValues* values
 	stunResist = values->getCurrentValue("dna_comp_armor_stun");
 	saberResist = values->getCurrentValue("dna_comp_armor_saber");
 	if (values->getCurrentValue("kineticeffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::KINETIC);
+		setSpecialResist(WeaponObject::KINETIC);
 	if (values->getCurrentValue("blasteffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::BLAST);
+		setSpecialResist(WeaponObject::BLAST);
 	if (values->getCurrentValue("energyeffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::ENERGY);
+		setSpecialResist(WeaponObject::ENERGY);
 	if (values->getCurrentValue("heateffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::HEAT);
+		setSpecialResist(WeaponObject::HEAT);
 	if (values->getCurrentValue("coldeffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::COLD);
+		setSpecialResist(WeaponObject::COLD);
 	if (values->getCurrentValue("electricityeffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::ELECTRICITY);
+		setSpecialResist(WeaponObject::ELECTRICITY);
 	if (values->getCurrentValue("acideffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::ACID);
+		setSpecialResist(WeaponObject::ACID);
 	if (values->getCurrentValue("stuneffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::STUN);
+		setSpecialResist(WeaponObject::STUN);
 	if (values->getCurrentValue("lightsabereffectiveness") > 0)
-		setSpecialResist(SharedWeaponObjectTemplate::LIGHTSABER);
+		setSpecialResist(WeaponObject::LIGHTSABER);
 
 	if (fortitude > 500) {
 		armorRating = 1;
@@ -203,13 +207,8 @@ void GeneticComponentImplementation::updateCraftingValues(CraftingValues* values
 	int dps = ceil((ceil(15.0 + (775.0 * ( ((float)power)/1000.0))))/3.5);
 	speed = 2.5-((ceil(((float)courage)/10)*10)/1000);
 	maxDam = round(((float)dps * speed) * 1.5);
-	//minDam = round(((float)dps * speed) * 0.5);
-  	// round maxDam down to the closest multiple of 5
-	maxDam = maxDam - (maxDam % 5);
-  	// subtract either 5 or 10 from maxDam to get the minDam
-	minDam = maxDam - ((System::random(1) + 1) * 5);
+	minDam = round(((float)dps * speed) * 0.5);
 }
-
 String GeneticComponentImplementation::convertSpecialAttack(String &attackName) {
 	if (attackName == "defaultattack" || attackName == "")
 		return "@combat_effects:none";
@@ -218,7 +217,6 @@ String GeneticComponentImplementation::convertSpecialAttack(String &attackName) 
 	else
 		return "@combat_effects:" + attackName;
 }
-
 String GeneticComponentImplementation::resistValue(float input){
 	if (input < 0) {
 		return "Vulnerable";
@@ -228,7 +226,6 @@ String GeneticComponentImplementation::resistValue(float input){
 		return displayvalue.toString();
 	}
 }
-
 void GeneticComponentImplementation::fillAttributeList(AttributeListMessage* alm, CreatureObject* object) {
 	TangibleObjectImplementation::fillAttributeList(alm, object);
 	switch (quality){
@@ -257,7 +254,6 @@ void GeneticComponentImplementation::fillAttributeList(AttributeListMessage* alm
 			alm->insertAttribute("dna_comp_quality","Unknown");
 			break;
 	}
-
 	alm->insertAttribute("dna_comp_hardiness",(int)hardiness);
 	alm->insertAttribute("dna_comp_fortitude",(int)fortitude);
 	alm->insertAttribute("dna_comp_endurance",(int)endurance);
@@ -277,7 +273,6 @@ void GeneticComponentImplementation::fillAttributeList(AttributeListMessage* alm
 		alm->insertAttribute("dna_comp_armor_rating","@obj_attr_n:armor_pierce_medium");
 	else if (armorRating == 3)
 		alm->insertAttribute("dna_comp_armor_rating","@obj_attr_n:armor_pierce_heavy");
-
 	// Add resists
 	alm->insertAttribute("dna_comp_armor_kinetic",resistValue(kinResist));
 	alm->insertAttribute("dna_comp_armor_energy",resistValue(energyResist));
@@ -292,15 +287,12 @@ void GeneticComponentImplementation::fillAttributeList(AttributeListMessage* alm
 	alm->insertAttribute("spec_atk_2",convertSpecialAttack(special2));
 	alm->insertAttribute("dna_comp_ranged_attack",ranged ? "Yes" : "No");
 }
-
 bool GeneticComponentImplementation::isSpecialResist(int type) {
 	return specialResists & type;
 }
-
 void GeneticComponentImplementation::setSpecialResist(int type) {
 	specialResists |= type;
 }
-
 int GeneticComponentImplementation::getEffectiveArmor() {
 	if (fortitude < 500)
 		return fortitude/50;

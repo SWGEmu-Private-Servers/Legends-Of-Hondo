@@ -9,6 +9,7 @@
 #define CITYTREASURYWITHDRAWALREASONSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/objects/player/sui/listbox/SuiListBox.h"
 #include "server/zone/objects/player/sessions/CityTreasuryWithdrawalSession.h"
 
 class CityTreasuryWithdrawalReasonSuiCallback : public SuiCallback {
@@ -17,12 +18,10 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		ManagedReference<CityTreasuryWithdrawalSession*> session = player->getActiveSession(SessionFacadeType::CITYWITHDRAW).castTo<CityTreasuryWithdrawalSession*>();
 
-		if (session == nullptr)
+		if (session == NULL)
 			return;
 
 		if (!suiBox->isInputBox() || cancelPressed || args->size() <= 0) {

@@ -5,7 +5,8 @@
 #ifndef MISSIONOBJECTMESSAGE3_H_
 #define MISSIONOBJECTMESSAGE3_H_
 
-#include "server/zone/packets/BaseLineMessage.h"
+#include "../../packets/BaseLineMessage.h"
+
 #include "server/zone/objects/mission/MissionObject.h"
 #include "server/zone/objects/waypoint/WaypointObject.h"
 
@@ -37,13 +38,13 @@ public:
 		insertInt(0);
 
 		//Difficulty
-		insertInt(mi->getDifficultyDisplay());
+		insertInt(mi->getDifficultyLevel());
 
-		insertFloat(mi->getEndPositionX()); //x
+		insertFloat(mi->getStartPositionX());//insertFloat(mi->getTargetX()); //x
 		insertFloat(0); //z
-		insertFloat(mi->getEndPositionY()); //y
-		insertLong(0); //obj id
-		insertInt(mi->getEndPlanet().hashCode());//planet crc
+		insertFloat(mi->getStartPositionY());//insertFloat(mi->getTargetY()); //y
+		insertLong(0); //Start obj id
+		insertInt(mi->getStartPlanet().hashCode());//
 
 		//Creator Name
 		insertUnicode(mi->getCreatorName());
@@ -52,15 +53,15 @@ public:
 		insertInt(mi->getRewardCredits());
 
 		//Dest Location
-		insertFloat(mi->getStartPositionX()); //x
+		insertFloat(mi->getEndPositionX());//insertFloat(mi->getTargetX()); //x
 		insertFloat(0); //z
-		insertFloat(mi->getStartPositionY()); //y
+		insertFloat(mi->getEndPositionY());//insertFloat(mi->getTargetY()); //y
 		insertLong(0); //Start obj id
-		insertInt(mi->getStartPlanet().hashCode()); //Start Planet Crc
+		insertInt(mi->getEndPlanet().hashCode());//insertInt(mi->getDestPlanetCrc()); //Start Planet Crc
 
 		//Target Object IFF crc
 		SharedObjectTemplate* templateObject = mi->getTargetTemplate();
-		if (templateObject != nullptr)
+		if (templateObject != NULL)
 			insertInt(templateObject->getClientObjectCRC());
 		else
 			insertInt(0);
@@ -90,7 +91,7 @@ public:
 
 		WaypointObject* waypoint = mi->getWaypointToMission();
 
-		if (waypoint == nullptr) {
+		if (waypoint == NULL) {
 			//Waypoint Info
 			insertInt(0); //??
 			insertFloat(0);//insertFloat(mi->getDestX()); //x

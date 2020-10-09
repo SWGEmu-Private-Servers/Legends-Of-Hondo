@@ -19,12 +19,10 @@ public:
 		skill = skl;
 	}
 
-	void run(CreatureObject* student, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* student, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
+		ManagedReference<SceneObject*> usingObject = sui->getUsingObject();
 
-		ManagedReference<SceneObject*> usingObject = sui->getUsingObject().get();
-
-		if (usingObject == nullptr || !usingObject->isCreatureObject())
+		if (usingObject == NULL || !usingObject->isCreatureObject())
 			return;
 
 		CreatureObject* teacher = cast<CreatureObject*>(usingObject.get());

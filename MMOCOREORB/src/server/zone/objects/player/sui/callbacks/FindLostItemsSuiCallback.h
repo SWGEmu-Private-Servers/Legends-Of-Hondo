@@ -17,20 +17,18 @@ public:
 	FindLostItemsSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!sui->isMessageBox() || cancelPressed)
 			return;
 
-		ManagedReference<SceneObject*> obj = sui->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = sui->getUsingObject();
 
-		if (obj == nullptr || !obj->isBuildingObject())
+		if (obj == NULL || !obj->isBuildingObject())
 			return;
 
 		BuildingObject* building = cast<BuildingObject*>( obj.get());
 
-		if (building->getZone() == nullptr)
+		if (building->getZone() == NULL)
 			return;
 
 		StructureManager::instance()->moveFirstItemTo(creature, building);

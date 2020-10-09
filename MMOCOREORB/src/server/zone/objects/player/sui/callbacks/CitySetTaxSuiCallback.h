@@ -9,6 +9,7 @@
 #define CITYSETTAXSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/objects/player/sui/listbox/SuiListBox.h"
 
 namespace server {
 namespace zone {
@@ -38,12 +39,10 @@ public:
 		taxSelected = tax;
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		ManagedReference<CityRegion*> city = cityRegion.get();
 
-		if (city == nullptr || !suiBox->isInputBox() || player == nullptr || cancelPressed || args->size() <= 0) {
+		if (city == NULL || !suiBox->isInputBox() || player == NULL || cancelPressed || args->size() <= 0) {
 			return;
 		}
 

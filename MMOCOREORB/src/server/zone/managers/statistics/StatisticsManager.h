@@ -5,7 +5,8 @@
 #ifndef STATISTICSMANAGER_H_
 #define STATISTICSMANAGER_H_
 
-#include "server/zone/objects/mission/MissionTypes.h"
+#include "engine/engine.h"
+#include "server/zone/objects/mission/MissionObject.h"
 
 class StatisticsManager : public Singleton<StatisticsManager>, public Logger, public Object {
 	AtomicLong numberOfCompletedMissionsBounty;
@@ -34,39 +35,39 @@ public:
 
 	void completeMission(unsigned int missionType, int reward) {
 		switch (missionType) {
-		case MissionTypes::BOUNTY:
+		case MissionObject::BOUNTY:
 			numberOfCompletedMissionsBounty.increment();
 			creditsGeneratedFromMissionsBounty.add(reward);
 			break;
-		case MissionTypes::CRAFTING:
+		case MissionObject::CRAFTING:
 			numberOfCompletedMissionsCrafting.increment();
 			creditsGeneratedFromMissionsCrafting.add(reward);
 			break;
-		case MissionTypes::DANCER:
+		case MissionObject::DANCER:
 			numberOfCompletedMissionsDancer.increment();
 			creditsGeneratedFromMissionsDancer.add(reward);
 			break;
-		case MissionTypes::DELIVER:
+		case MissionObject::DELIVER:
 			numberOfCompletedMissionsDeliver.increment();
 			creditsGeneratedFromMissionsDeliver.add(reward);
 			break;
-		case MissionTypes::DESTROY:
+		case MissionObject::DESTROY:
 			numberOfCompletedMissionsDestroy.increment();
 			creditsGeneratedFromMissionsDestroy.add(reward);
 			break;
-		case MissionTypes::HUNTING:
+		case MissionObject::HUNTING:
 			numberOfCompletedMissionsHunting.increment();
 			creditsGeneratedFromMissionsHunting.add(reward);
 			break;
-		case MissionTypes::MUSICIAN:
+		case MissionObject::MUSICIAN:
 			numberOfCompletedMissionsMusician.increment();
 			creditsGeneratedFromMissionsMusician.add(reward);
 			break;
-		case MissionTypes::RECON:
+		case MissionObject::RECON:
 			numberOfCompletedMissionsRecon.increment();
 			creditsGeneratedFromMissionsRecon.add(reward);
 			break;
-		case MissionTypes::SURVEY:
+		case MissionObject::SURVEY:
 			numberOfCompletedMissionsSurvey.increment();
 			creditsGeneratedFromMissionsSurvey.add(reward);
 			break;

@@ -10,7 +10,7 @@
 
 #include "server/zone/Zone.h"
 #include "server/ServerCore.h"
-#include "server/zone/objects/creature/ai/AiAgent.h"
+#include "server/zone/objects/creature/AiAgent.h"
 #include "server/zone/managers/creature/CreatureManager.h"
 
 class SpawnCreatureTask : public Task {
@@ -36,7 +36,7 @@ public:
 		ZoneServer* zoneServer = ServerCore::getZoneServer();
 		Zone* zone = zoneServer->getZone(zoneName);
 
-		if (zone == nullptr)
+		if (zone == NULL)
 			return;
 
 		CreatureObject* creature = zone->getCreatureManager()->spawnCreature(templateCRC, 0, x, z, y, parentID);

@@ -5,22 +5,21 @@
 #ifndef BURSTRUNCOMMAND_H_
 #define BURSTRUNCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/Zone.h"
+
 class BurstRunCommand : public QueueCommand {
 public:
 
 	BurstRunCommand(const String& name, ZoneProcessServer* server)
 		: QueueCommand(name, server) {
 
-	}
+	}	
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
 
-		if (!checkStateMask(creature)) {
-			if (creature->isRidingMount()) {
-				creature->sendSystemMessage("@cbt_spam:no_burst");
-			}
+		if (!checkStateMask(creature))
 			return INVALIDSTATE;
-		}
 
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;

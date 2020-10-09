@@ -9,7 +9,6 @@
 #include "server/zone/objects/structure/StructureObject.h"
 #include "server/zone/objects/player/sessions/DestroyStructureSession.h"
 #include "server/zone/objects/tangible/terminal/Terminal.h"
-#include "server/zone/managers/gcw/GCWManager.h"
 #include "server/zone/objects/tangible/components/CampTerminalMenuComponent.h"
 
 class DestroystructureCommand : public QueueCommand {
@@ -34,45 +33,24 @@ public:
 
 		ManagedReference<PlayerManager*> playerManager = server->getPlayerManager();
 
-		uint64 targetid = creature->getTargetID();
-		ManagedReference<SceneObject*> obj = playerManager->getInRangeStructureWithAdminRights(creature, targetid);
+		ManagedReference<SceneObject*> obj = playerManager->getInRangeStructureWithAdminRights(creature, target);
 
-		if (obj == nullptr || !obj->isStructureObject())
+		if (obj == NULL || !obj->isStructureObject())
 			return INVALIDTARGET;
 
 		StructureObject* structure = cast<StructureObject*>( obj.get());
 
 		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
 
-		if (ghost == nullptr)
+		if (ghost == NULL)
 			return GENERALERROR;
 
-		if (!ghost->isOwnedStructure(structure) && !ghost->isStaff()) {
+		if (!ghost->isOwnedStructure(structure) && !ghost->isPrivileged()) {
 			creature->sendSystemMessage("@player_structure:destroy_must_be_owner"); //You must be the owner to destroy a structure.
 			return INVALIDTARGET;
 		}
 
-		if (structure->isGCWBase() && !ghost->isStaff()) {
-			ManagedReference<Zone*> zone = creature->getZone();
-
-			if (zone == nullptr)
-				return GENERALERROR;
-
-			GCWManager* gcwMan = zone->getGCWManager();
-
-			if (gcwMan == nullptr)
-				return GENERALERROR;
-
-			BuildingObject* buildingObject = cast<BuildingObject*>(structure);
-
-			if (buildingObject == nullptr)
-				return GENERALERROR;
-
-			if (((structure->getPvpStatusBitmask() & CreatureFlag::OVERT) && gcwMan->isBaseVulnerable(buildingObject)) || (structure->getOwnerCreatureObject() != creature))
-				return INVALIDTARGET;
-		}
-
-		if (structure->isTurret() || structure->isMinefield()) {
+		if ((structure->isGCWBase() && !ghost->isPrivileged()) || structure->isTurret() || structure->isMinefield()) {
 			return INVALIDTARGET;
 		}
 
@@ -92,7 +70,7 @@ public:
 	}
 
 	int disbandCamp(CreatureObject* creature, StructureObject* structure) const {
-		Reference<Terminal*> campTerminal = nullptr;
+		Reference<Terminal*> campTerminal = NULL;
 		SortedVector < ManagedReference<SceneObject*> > *childObjects = structure->getChildObjects();
 
 		for (int i = 0; i < childObjects->size(); ++i) {
@@ -102,13 +80,13 @@ public:
 			}
 		}
 
-		if (campTerminal == nullptr) {
+		if (campTerminal == NULL) {
 			return GENERALERROR;
 		}
 
 		CampTerminalMenuComponent* campMenu = cast<CampTerminalMenuComponent*>(campTerminal->getObjectMenuComponent());
 
-		if (campMenu == nullptr)
+		if (campMenu == NULL)
 			return GENERALERROR;
 
 		campMenu->disbandCamp(campTerminal, creature);

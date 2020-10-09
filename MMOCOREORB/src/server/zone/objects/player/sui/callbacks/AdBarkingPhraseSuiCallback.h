@@ -10,8 +10,6 @@
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
 #include "server/zone/objects/player/sessions/vendor/VendorAdBarkingSession.h"
-#include "server/zone/objects/player/sui/listbox/SuiListBox.h"
-#include "server/zone/managers/name/NameManager.h"
 
 class AdBarkingPhraseSuiCallback : public SuiCallback {
 
@@ -21,11 +19,10 @@ public:
 
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 
 		ManagedReference<VendorAdBarkingSession*> session = creature->getActiveSession(SessionFacadeType::VENDORADBARKING).castTo<VendorAdBarkingSession*>();
-		if(session == nullptr)
+		if(session == NULL)
 			return;
 
 		if(sui->getWindowType() == SuiWindowType::VENDOR_PHRASES)
@@ -46,7 +43,7 @@ public:
 		SuiListBox* listBox = cast<SuiListBox*>(sui);
 		int index = Integer::valueOf(args->get(0).toString());
 
-		if(cancelPressed || listBox == nullptr || (index < 0 || index > 14)) {
+		if(cancelPressed || listBox == NULL || (index < 0 || index > 14)) {
 			session->cancelSession();
 			return;
 		}
@@ -65,17 +62,14 @@ public:
 	void handleCustomMessage(VendorAdBarkingSession* session, CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		SuiInputBox* inputBox = cast<SuiInputBox*>(sui);
 
-		if(cancelPressed || inputBox == nullptr) {
+		if(cancelPressed || inputBox == NULL) {
 			session->sendPhraseOptions();
 			return;
 		}
 
 		String message = args->get(0).toString();
 
-		ZoneProcessServer* zps = creature->getZoneProcessServer();
-		NameManager* nameManager = zps->getNameManager();
-
-		if(nameManager->isProfane(message)) {
+		if(NameManager::instance()->isProfane(message)) {
 			session->sendPhraseOptions();
 			creature->sendSystemMessage("Phrase rejected by filter, please try again");
 			return;
@@ -89,7 +83,7 @@ public:
 
 		int index = Integer::valueOf(args->get(0).toString());
 
-		if(cancelPressed || listBox == nullptr || (index < 0 || index > 16)) {
+		if(cancelPressed || listBox == NULL || (index < 0 || index > 16)) {
 			session->sendPhraseOptions();
 			return;
 		}
@@ -103,7 +97,7 @@ public:
 
 		int index = Integer::valueOf(args->get(0).toString());
 
-		if(cancelPressed || listBox == nullptr || (index < 0 || index > 16)) {
+		if(cancelPressed || listBox == NULL || (index < 0 || index > 16)) {
 			session->sendPhraseOptions();
 			return;
 		}

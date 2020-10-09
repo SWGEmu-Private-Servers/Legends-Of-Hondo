@@ -10,6 +10,7 @@
 
 
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/creature/CreatureObject.h"
 #include "ObjectControllerMessageCallback.h"
 #include "server/zone/managers/mission/MissionManager.h"
 #include "server/zone/objects/mission/MissionObject.h"
@@ -38,14 +39,11 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
-
-		if (player == nullptr)
-			return;
+		ManagedReference<CreatureObject*> player = cast<CreatureObject*>( client->getPlayer().get().get());
 
 		ManagedReference<SceneObject*> terminal = server->getZoneServer()->getObject(terminalObjectID);
 
-		if (terminal == nullptr) {
+		if (terminal == NULL) {
 			player->sendSystemMessage("@skill_teacher:skill_terminal_disabled");
 			return;
 		}
@@ -55,7 +53,7 @@ public:
 
 		ManagedReference<SceneObject*> mission = server->getZoneServer()->getObject(missionObjectID);
 
-		if (mission == nullptr)
+		if (mission == NULL)
 			return;
 
 		if (!mission->isMissionObject())
@@ -63,12 +61,12 @@ public:
 
 		MissionObject* missionObject = cast<MissionObject*>( mission.get());
 
-		if (missionObject == nullptr)
+		if (missionObject == NULL)
 			return;
 
 		MissionTerminal* missionTerminal = cast<MissionTerminal*>( terminal.get());
 
-		if (missionTerminal == nullptr)
+		if (missionTerminal == NULL)
 			return;
 
 		Locker clocker(missionObject, player);

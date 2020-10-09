@@ -12,7 +12,7 @@
 class TurretControlTerminalDataComponent : public DataObjectComponent {
 protected:
 	int turretIndex;
-	unsigned int suiBoxID;
+	int suiBoxID;
 
 public:
 	TurretControlTerminalDataComponent() {
@@ -25,17 +25,11 @@ public:
 
 	}
 
-	void writeJSON(nlohmann::json& j) const {
-		DataObjectComponent::writeJSON(j);
-
-		SERIALIZE_JSON_MEMBER(turretIndex);
-	}
-
 	bool isTurretControlTerminalData() {
 		return true;
 	}
 
-	int getTurrteIndex() const {
+	int getTurrteIndex(){
 		return turretIndex;
 	}
 
@@ -43,13 +37,13 @@ public:
 		turretIndex = indx;
 	}
 
-	void setSuiBoxID(unsigned int id){
+	void setSuiBoxID(int id){
 		suiBoxID = id;
 	}
-
-	unsigned int getSuiBoxID() const {
+	int getSuiBoxID(){
 		return suiBoxID;
 	}
+
 
 
 private:

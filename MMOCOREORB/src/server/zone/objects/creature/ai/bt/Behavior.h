@@ -9,7 +9,7 @@
 #define BEHAVIOR_H_
 
 #include "engine/engine.h"
-#include "server/zone/objects/creature/ai/AiAgent.h"
+#include "server/zone/objects/creature/AiAgent.h"
 #include "server/zone/objects/creature/ai/bt/LuaBehavior.h"
 
 namespace server {
@@ -21,10 +21,10 @@ class SceneObject;
 }
 
 namespace creature {
-namespace ai {
 
 class AiAgent;
 
+namespace ai {
 namespace bt {
 
 class CompositeBehavior;
@@ -91,10 +91,10 @@ public:
 	 * @return true if we can update, false if not
 	 */
 	virtual bool checkConditions() {
-		if (interface != nullptr) {
-			auto strongReference = agent.getReferenceUnsafeStaticCast();
+		if (interface != NULL) {
+			Reference<AiAgent*> strongReference = agent.get();
 
-			if (strongReference != nullptr) {
+			if (strongReference != NULL) {
 				return interface->checkConditions(strongReference);
 			}
 		}
@@ -125,7 +125,7 @@ public:
 	virtual void doAction(bool directlyExecuted = false);
 
 	virtual int interrupt(SceneObject* source, int64 msg) {
-		auto strongReference = agent.getReferenceUnsafeStaticCast(); // our agent should always be in ram
+		Reference<AiAgent*> strongReference = agent.get();
 
 		return interface->interrupt(strongReference, source, msg);
 	}
@@ -134,8 +134,8 @@ public:
 	 * Virtual to ensure that we should do an awareness check
 	 */
 	virtual bool doAwarenessCheck(SceneObject* target) {
-		if (interface != nullptr) {
-			auto strongReference = agent.getReferenceUnsafeStaticCast();
+		if (interface != NULL) {
+			Reference<AiAgent*> strongReference = agent.get();
 
 			return interface->doAwarenessCheck(strongReference, target);
 		}

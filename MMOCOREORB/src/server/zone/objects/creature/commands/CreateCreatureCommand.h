@@ -5,10 +5,12 @@
 #ifndef CREATECREATURECOMMAND_H_
 #define CREATECREATURECOMMAND_H_
 
-#include "server/zone/objects/creature/ai/AiAgent.h"
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/objects/creature/AiAgent.h"
 #include "server/zone/Zone.h"
 #include "server/zone/managers/creature/CreatureManager.h"
 #include "server/zone/managers/creature/AiMap.h"
+
 
 class CreateCreatureCommand : public QueueCommand {
 public:
@@ -27,7 +29,7 @@ public:
 
 		Zone* zone = creature->getZone();
 
-		if (zone == nullptr)
+		if (zone == NULL)
 			return GENERALERROR;
 
 		float posX = creature->getPositionX(), posY = creature->getPositionY(), posZ = creature->getPositionZ();
@@ -38,7 +40,6 @@ public:
 		String aiTemplate = "";
 		bool event = false;
 		int level = -1;
-		float scale = -1.0;
 
 		if (!arguments.isEmpty()) {
 			UnicodeTokenizer tokenizer(arguments);
@@ -64,7 +65,7 @@ public:
 				for (int i = 0; i < server->getZoneCount(); ++i) {
 					Zone* zone = server->getZone(i);
 
-					if (zone == nullptr)
+					if (zone == NULL)
 						continue;
 
 					int num = zone->getSpawnedAiAgents();
@@ -96,27 +97,10 @@ public:
 				event = true;
 
 				if (tokenizer.hasMoreTokens()) {
-					String levelToken;
-
-					tokenizer.getStringToken(levelToken);
-
-					int idx = levelToken.indexOf("-");
-
-					if (idx == -1) {
-						level = Integer::valueOf(levelToken);
-					} else {
-						int minLevel = Integer::valueOf(levelToken.subString(0, idx));
-						int maxLevel = Integer::valueOf(levelToken.subString(idx + 1));
-
-						level = minLevel + System::random(maxLevel - minLevel);
-					}
+					level = tokenizer.getIntToken();
 
 					if (level > 500)
 						level = 500;
-
-					if (tokenizer.hasMoreTokens()) {
-						scale = tokenizer.getFloatToken();
-					}
 				}
 			}
 
@@ -145,7 +129,7 @@ public:
 			if (tokenizer.hasMoreTokens())
 				parID = tokenizer.getLongToken();
 		} else {
-			creature->sendSystemMessage("Usage: /createCreature <template> [object template | ai template | baby | event [level] [scale] ] [X] [Z] [Y] [planet] [cellID]");
+			creature->sendSystemMessage("Usage: /createCreature <template> [object template | ai template | baby | event [level] ] [X] [Z] [Y] [planet] [cellID]");
 			return GENERALERROR;
 		}
 
@@ -154,7 +138,7 @@ public:
 		uint32 templ = tempName.hashCode();
 		uint32 objTempl = objName.length() > 0 ? objName.hashCode() : 0;
 
-		AiAgent* npc = nullptr;
+		AiAgent* npc = NULL;
 		if (baby)
 			npc = cast<AiAgent*>(creatureManager->spawnCreatureAsBaby(templ, posX, posZ, posY, parID));
 		else if (event)
@@ -163,28 +147,23 @@ public:
 			npc = cast<AiAgent*>(creatureManager->spawnCreatureWithAi(templ, posX, posZ, posY, parID));
 		else {
 			npc = cast<AiAgent*>(creatureManager->spawnCreature(templ, objTempl, posX, posZ, posY, parID));
-			if (npc != nullptr)
+			if (npc != NULL)
 				npc->activateLoad("");
 		}
 
-		if (baby && npc == nullptr) {
+		if (baby && npc == NULL) {
 			creature->sendSystemMessage("You cannot spawn " + tempName + " as a baby.");
 			return GENERALERROR;
-		} else if (npc == nullptr) {
+		} else if (npc == NULL) {
 			creature->sendSystemMessage("could not spawn " + arguments.toString());
 			return GENERALERROR;
 		}
-
-		Locker clocker(npc, creature);
 
 		if (!aiTemplate.isEmpty()) {
 			npc->activateLoad(aiTemplate);
 		}
 
 		npc->updateDirection(Math::deg2rad(creature->getDirectionAngle()));
-
-		if (scale > 0 && scale != 1.0)
-			npc->setHeight(scale);
 
 		return SUCCESS;
 	}

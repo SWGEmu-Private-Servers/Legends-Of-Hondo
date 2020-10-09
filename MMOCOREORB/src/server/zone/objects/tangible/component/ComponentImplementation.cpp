@@ -3,6 +3,7 @@
 		See file COPYING for copying conditions.*/
 
 #include "server/zone/objects/tangible/component/Component.h"
+#include "server/zone/objects/manufactureschematic/ManufactureSchematic.h"
 
 
 void ComponentImplementation::initializeTransientMembers() {
@@ -94,11 +95,7 @@ void ComponentImplementation::updateCraftingValues(CraftingValues* values, bool 
 	keyList.removeAll();
 
 	if(firstUpdate && values->hasProperty("useCount")) {
-		int count = values->getCurrentValue("useCount");
-
-		// Crafting components dropped or crafted with a single use do not display a "1" (#6924)
-		if(count > 1)
-			setUseCount(count);
+		setUseCount(values->getCurrentValue("useCount"));
 	}
 
 	for (int i = 0; i < values->getExperimentalPropertySubtitleSize(); ++i) {

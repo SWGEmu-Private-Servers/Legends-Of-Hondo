@@ -10,128 +10,94 @@
 #include "engine/engine.h"
 #include "server/zone/objects/scene/components/DataObjectComponent.h"
 #include "server/zone/packets/scene/AttributeListMessage.h"
-#include "templates/installation/SharedInstallationObjectTemplate.h"
+#include "server/zone/templates/tangible/SharedInstallationObjectTemplate.h"
 #include "server/zone/objects/tangible/weapon/WeaponObject.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 
 class TurretDataComponent : public DataObjectComponent {
 
 protected:
-	int maxRange;
-	float attackSpeed;
-	Time nextAutoFireTime;
+	int maxrange;
+	Time nextFireTime;
+	Time nextManualFireTime;
+	Time controlTimeout;  // when the controller times out from inactivity and someone else can control it
+	int attackSpeed;
 	SharedInstallationObjectTemplate* templateData;
-	ManagedWeakReference<CreatureObject*> controller;
-	ManagedWeakReference<CreatureObject*> manualTarget;
-	ManagedWeakReference<CreatureObject*> lastAutoTarget;
+	ManagedReference<CreatureObject*> controller;
+	ManagedReference<CreatureObject*> target;
 	Reference<Task*> turretFireTask;
-	AtomicInteger numberOfPlayersInRange;
 
 public:
 	TurretDataComponent() {
-		maxRange = 80;
-		attackSpeed = 1;
-		nextAutoFireTime = Time();
-		templateData = nullptr;
-		controller = nullptr;
-		manualTarget = nullptr;
-		turretFireTask = nullptr;
+		maxrange = 80;
+		nextFireTime = Time();
+		nextManualFireTime = Time();
+		controlTimeout = Time();
+		attackSpeed = 5;
+		templateData = NULL;
+		controller = NULL;
+		target = NULL;
+		turretFireTask = NULL;
 	}
 
-	~TurretDataComponent() {
+	~TurretDataComponent(){
 
-	}
-
-	void writeJSON(nlohmann::json& j) const {
-		DataObjectComponent::writeJSON(j);
-
-		SERIALIZE_JSON_MEMBER(maxRange);
-		SERIALIZE_JSON_MEMBER(attackSpeed);
-		SERIALIZE_JSON_MEMBER(nextAutoFireTime);
-
-		if (templateData) {
-			j["templateData"] = templateData->getTemplateFileName();
-		} else {
-			j["templateData"] = "";
-		}
-
-		SERIALIZE_JSON_MEMBER(controller);
-		SERIALIZE_JSON_MEMBER(manualTarget);
-		SERIALIZE_JSON_MEMBER(lastAutoTarget);
-		SERIALIZE_JSON_MEMBER(numberOfPlayersInRange);
 	}
 
 	void initializeTransientMembers();
-	void setWeapon(WeaponObject* weapon);
 
-	int getRescheduleDelay() {
-		int delay = 0;
-
-		if (nextAutoFireTime.isFuture())
-			delay = Time().miliDifference(nextAutoFireTime);
-
-		return delay;
+	bool canAutoFire(){
+		return (attackSpeed > 0 && nextFireTime.isPast()) ;
 	}
 
-	bool isTurretData() {
+	bool canManualFire(){
+		return (attackSpeed > 0 && nextManualFireTime.isPast());
+	}
+
+	void refreshControlTimer(int seconds){
+		controlTimeout = Time();
+		controlTimeout.addMiliTime(seconds * 1000);
+	}
+
+	bool hasControlTimedOut(){
+		return controlTimeout.isPast();
+	}
+
+	void updateAutoCooldown(float secondsToAdd);
+	void updateManualCooldown(float secondsToAdd);
+
+	bool isTurretData(){
 		return true;
 	}
 
-	void setController(CreatureObject* creature) {
+
+	void setController(CreatureObject* creature){
 		controller = creature;
 	}
 
-	CreatureObject* getController() {
-		return controller.get();
+	CreatureObject* getController(){
+		return controller;
 	}
 
-	void setManualTarget(CreatureObject* creature) {
-		manualTarget = creature;
+	void setTarget(CreatureObject* creature){
+		target = creature;
 	}
 
-	CreatureObject* getManualTarget() {
-		return manualTarget.get();
+	CreatureObject* getTarget(){
+		return target;
 	}
 
-	int getMaxRange () {
-		return maxRange;
+	void setFireTask(Task* newTask){
+		turretFireTask = newTask;
 	}
 
-	float getAttackSpeed() {
-		return attackSpeed;
-	}
-
-	Task* getFireTask() {
+	Task* getFireTask(){
 		return turretFireTask;
 	}
 
-	Vector<CreatureObject*> getAvailableTargets(bool aggroOnly);
-	CreatureObject* selectTarget();
-	bool checkTarget(CreatureObject* creature, TangibleObject* turret, bool aggroOnly);
-
-	void updateAutoCooldown(float secondsToAdd);
-
-	void scheduleFireTask(CreatureObject* target, TangibleObject* terminal, int delay = 0);
-	void rescheduleFireTask(bool wasManual, bool isManual);
-	int getAutoFireTimeout();
-
-	uint32 getNumberOfPlayersInRange() {
-		return numberOfPlayersInRange.get();
-	}
-
-	uint32 incrementNumberOfPlayersInRange() {
-		return numberOfPlayersInRange.increment();
-	}
-
-	uint32 decrementNumberOfPlayersInRange() {
-		return numberOfPlayersInRange.decrement();
-	}
-
-	bool compareAndSetNumberOfPlayersInRange(uint32 oldVal, uint32 newVal) {
-		return numberOfPlayersInRange.compareAndSet(oldVal, newVal);
-	}
-	void fillAttributeList(AttributeListMessage* alm);
-
+	void rescheduleManualFireTask(float secondsToWait);
+	void rescheduleFireTask(float secondsToWait, bool manual);
+	void setWeapon(WeaponObject* weapon);
 	unsigned int getArmorRating();
 	float getKinetic();
 	float getEnergy();
@@ -143,6 +109,18 @@ public:
 	float getAcid();
 	float getLightSaber();
 	float getChanceHit();
+
+	String getWeaponString();
+
+	void fillAttributeList(AttributeListMessage* alm);
+
+
+private:
+	void addSerializableVariables(){
+	}
 };
+
+
+
 
 #endif /* TURRETDATACOMPONENT_H_ */

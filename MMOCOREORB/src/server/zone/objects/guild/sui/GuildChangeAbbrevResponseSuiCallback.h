@@ -3,6 +3,7 @@
 #define GUILDCHANGEABBREVRESPONSESUICALLBACK_H_
 
 #include "server/zone/managers/guild/GuildManager.h"
+#include "server/zone/objects/tangible/terminal/guild/GuildTerminal.h"
 #include "server/zone/objects/player/sui/SuiCallback.h"
 
 class GuildChangeAbbrevResponseSuiCallback : public SuiCallback {
@@ -15,14 +16,12 @@ public:
 		guildObject = guild;
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		uint64 playerID = player->getObjectID();
 
 		ManagedReference<GuildManager*> guildManager = server->getGuildManager();
 		ManagedReference<GuildObject*> guild = guildObject.get();
-		if (guild == nullptr || guildManager == nullptr)
+		if (guild == NULL || guildManager == NULL)
 			return;
 
 		Locker glocker(guild, player);
@@ -50,6 +49,20 @@ public:
 		}
 
 		String guildAbbrev = args->get(0).toString();
+
+		ManagedReference<SceneObject*> obj = suiBox->getUsingObject();
+
+		if (obj == NULL || !obj->isTerminal()) {
+			guild->resetRename();
+			return;
+		}
+
+		Terminal* terminal = cast<Terminal*>( obj.get());
+
+		if (!terminal->isGuildTerminal()) {
+			guild->resetRename();
+			return;
+		}
 
 		if (guildManager->validateGuildAbbrev(player, guildAbbrev, guild)) {
 			guild->setPendingNewAbbrev(guildAbbrev);

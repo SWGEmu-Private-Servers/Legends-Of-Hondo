@@ -5,6 +5,7 @@
 #ifndef LISTGUILDSCOMMAND_H_
 #define LISTGUILDSCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/managers/guild/GuildManager.h"
 
 class ListGuildsCommand : public QueueCommand {
@@ -25,6 +26,9 @@ public:
 
 		if (!creature->isPlayerCreature())
 			return INVALIDPARAMETERS;
+
+		if (!creature->getPlayerObject()->isPrivileged())
+			return GENERALERROR;
 
 		CreatureObject* player = cast<CreatureObject*>(creature);
 

@@ -7,6 +7,7 @@
 
 #include "CityManagementMenuComponent.h"
 #include "server/zone/objects/region/CityRegion.h"
+#include "server/zone/Zone.h"
 #include "server/zone/packets/object/ObjectMenuResponse.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/managers/city/CityManager.h"
@@ -16,16 +17,11 @@
 #define CITY_DEBUG
 #endif
 
-void CityManagementMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, ObjectMenuResponse* menuResponse, CreatureObject* player) const {
-	ManagedReference<CityRegion*> city = sceneObject->getCityRegion().get();
+void CityManagementMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, ObjectMenuResponse* menuResponse, CreatureObject* player) {
+	ManagedReference<CityRegion*> city = sceneObject->getCityRegion();
 
-	if (city == nullptr) {
+	if (city == NULL) {
 		sceneObject->error("city region null in CityManagementMenuComponent::fillObjectMenuResponse");
-		return;
-	}
-
-	PlayerObject* ghost = player->getPlayerObject();
-	if (ghost == nullptr) {
 		return;
 	}
 
@@ -41,7 +37,7 @@ void CityManagementMenuComponent::fillObjectMenuResponse(SceneObject* sceneObjec
 	menuResponse->addRadialMenuItemToRadialID(210, 220, 3, "@city/city:treasury_deposit"); //Treasury Deposit
 
 #ifdef CITY_DEBUG
-	if(ghost->isPrivileged()) {
+	if(player->getPlayerObject()->isPrivileged()) {
 		menuResponse->addRadialMenuItem(227,3,"@city/city:city_hacks"); // City Hacks (GODMODE ONLY)
 		menuResponse->addRadialMenuItemToRadialID(227,228,3,"@city/city:rank_up"); // 	Force Rank Up
 		menuResponse->addRadialMenuItemToRadialID(227,229,3,"@city/city:rank_down"); // Force Rank Down
@@ -49,14 +45,13 @@ void CityManagementMenuComponent::fillObjectMenuResponse(SceneObject* sceneObjec
 	}
 #endif
 
-	if (!city->isMayor(player->getObjectID()) && !ghost->isStaff())
+	if (!city->isMayor(player->getObjectID()))
 		return;
+
+	menuResponse->addRadialMenuItemToRadialID(210, 221, 3, "@city/city:treasury_withdraw"); //Treasury Withdraw
 
 	menuResponse->addRadialMenuItem(216, 3, "@city/city:city_management"); //City Management
 	menuResponse->addRadialMenuItemToRadialID(216, 217, 3, "@city/city:city_name"); //Change City Name
-
-	if (!city->isMayor(player->getObjectID()) && !ghost->isAdmin())
-		return;
 
 	if (city->isRegistered()) {
 		menuResponse->addRadialMenuItemToRadialID(216, 222, 3, "@city/city:city_unregister"); //Unregister City
@@ -72,26 +67,16 @@ void CityManagementMenuComponent::fillObjectMenuResponse(SceneObject* sceneObjec
 
 	menuResponse->addRadialMenuItemToRadialID(216, 218, 3, "@city/city:city_militia"); //Manage Militia
 
-	menuResponse->addRadialMenuItemToRadialID(216, 225, 3, "@city/city:city_specializations"); //City Specialization
-
-	if (!city->isMayor(player->getObjectID()))
-		return;
-
-	menuResponse->addRadialMenuItemToRadialID(210, 221, 3, "@city/city:treasury_withdraw"); //Treasury Withdraw
-
 	menuResponse->addRadialMenuItemToRadialID(216, 219, 3, "@city/city:treasury_taxes"); //Adjust Taxes
+
+	menuResponse->addRadialMenuItemToRadialID(216, 225, 3, "@city/city:city_specializations"); //City Specialization
 }
 
-int CityManagementMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, CreatureObject* player, byte selectID) const {
-	ManagedReference<CityRegion*> city = sceneObject->getCityRegion().get();
+int CityManagementMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, CreatureObject* player, byte selectID) {
+	ManagedReference<CityRegion*> city = sceneObject->getCityRegion();
 
-	if (city == nullptr)
+	if (city == NULL)
 		return 1;
-
-	PlayerObject* ghost = player->getPlayerObject();
-	if (ghost == nullptr) {
-		return 1;
-	}
 
 	sceneObject->unlock();
 
@@ -118,7 +103,8 @@ int CityManagementMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject
 		cityManager->sendChangeCityName(city, player);
 		break;
 	case 218: //Manage Militia
-		cityManager->sendManageMilitia(city, player, sceneObject);
+		if (city->isMayor(player->getObjectID()))
+			cityManager->sendManageMilitia(city, player, sceneObject);
 		break;
 	case 219: //Adjust Taxes
 		if (city->isMayor(player->getObjectID())) {
@@ -144,7 +130,8 @@ int CityManagementMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject
 		cityManager->sendMaintenanceReport(city, player, sceneObject);
 		break;
 	case 225: //Set City Specialization
-		cityManager->promptCitySpecialization(city, player, sceneObject);
+		if (city->isMayor(player->getObjectID()))
+			cityManager->promptCitySpecialization(city, player, sceneObject);
 		break;
 	case 226: //Toggle Zoning Enabled
 		cityManager->promptToggleZoningEnabled(city, player);
@@ -152,17 +139,17 @@ int CityManagementMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject
 
 #ifdef CITY_DEBUG
 	case 228:
-		if(ghost->isPrivileged()) {
+		if(player->getPlayerObject()->isPrivileged()) {
 			cityManager->promptForceRank(city, player, true);
 		}
 		break;
 	case 229:
-		if(ghost->isPrivileged()) {
+		if(player->getPlayerObject()->isPrivileged()) {
 			cityManager->promptForceRank(city, player, false);
 		}
 		break;
 	case 230:
-		if(ghost->isPrivileged()) {
+		if(player->getPlayerObject()->isPrivileged()) {
 			cityManager->promptForceUpdate(city, player);
 		}
 		break;

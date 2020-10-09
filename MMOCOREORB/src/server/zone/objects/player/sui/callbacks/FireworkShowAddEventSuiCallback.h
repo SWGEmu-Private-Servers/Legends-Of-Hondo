@@ -13,9 +13,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox() || cancelPressed)
 			return;
 
@@ -32,19 +30,17 @@ public:
 
 		ManagedReference<FireworkObject*> firework = (server->getObject(fireworkObjectID)).castTo<FireworkObject*>();
 
-		if (firework == nullptr || !firework->isFireworkObject())
+		if (firework == NULL || !firework->isFireworkObject())
 			return;
 
-		Locker clocker(firework, player);
+		ManagedReference<SceneObject*> fireworkShow = suiBox->getUsingObject();
 
-		ManagedReference<SceneObject*> fireworkShow = suiBox->getUsingObject().get();
-
-		if (fireworkShow == nullptr || !fireworkShow->isFireworkObject())
+		if (fireworkShow == NULL || !fireworkShow->isFireworkObject())
 			return;
 
 		DataObjectComponent* data = fireworkShow->getDataObjectComponent()->get();
 
-		if(data == nullptr || !data->isFireworkShowData())
+		if(data == NULL || !data->isFireworkShowData())
 			return;
 
 		FireworkShowDataComponent* fireworkShowData = cast<FireworkShowDataComponent*>(data);
@@ -54,16 +50,10 @@ public:
 		if(firework->getUseCount() > 1) {
 			ObjectManager* objectManager = ObjectManager::instance();
 			ManagedReference<TangibleObject*> clone = cast<TangibleObject*>( objectManager->cloneObject(firework));
-			if(clone == nullptr)
+			if(clone == NULL)
 				return;
 
-			Locker locker(clone);
-
-			if (clone->hasAntiDecayKit()) {
-				clone->removeAntiDecayKit();
-			}
-
-			clone->setParent(nullptr);
+			clone->setParent(NULL);
 			clone->setUseCount(1, false);
 			firework->decreaseUseCount();
 			firework->broadcastObject(clone, true);
@@ -78,10 +68,8 @@ public:
 
 		ManagedReference<TangibleObject*> fireworkShowObject = fireworkShow.castTo<TangibleObject*>();
 
-		if (fireworkShowObject != nullptr ) {
-			Locker locker(fireworkShowObject);
+		if (fireworkShowObject != NULL )
 			fireworkShowObject->setUseCount(fireworkShowObject->getUseCount() + 1, true);
-		}
 
 		FireworkShowMenuComponent* showMenu = cast<FireworkShowMenuComponent*>(fireworkShow->getObjectMenuComponent());
 		showMenu->addEvent(player, fireworkShow.castTo<FireworkObject*>());

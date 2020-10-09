@@ -214,12 +214,9 @@ public:
 
 
 	uint32 static getMedicalBuff(uint8 attribute) {
-		uint32 buffCRC = 0;
+		uint32 buffCRC = MEDICAL_ENHANCE_HEALTH;
 
 		switch (attribute) {
-		case BuffAttribute::HEALTH:
-			buffCRC = BuffCRC::MEDICAL_ENHANCE_HEALTH;
-			break;
 		case BuffAttribute::ACTION:
 			buffCRC = BuffCRC::MEDICAL_ENHANCE_ACTION;
 			break;

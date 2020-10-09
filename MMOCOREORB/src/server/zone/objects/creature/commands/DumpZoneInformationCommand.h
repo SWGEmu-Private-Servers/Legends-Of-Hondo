@@ -9,6 +9,7 @@
 #include "server/zone/objects/cell/CellObject.h"
 #include "server/zone/ZoneServer.h"
 #include "server/chat/ChatManager.h"
+#include "server/zone/objects/terrain/layer/boundaries/BoundaryRectangle.h"
 
 class DumpZoneInformationCommand : public QueueCommand {
 public:
@@ -29,34 +30,26 @@ public:
 		if (!creature->isPlayerCreature())
 			return GENERALERROR;
 
-		CreatureObject* player = creature;
-
-		Zone* zone = player->getZone();
-
-		if (zone == nullptr)
-			return GENERALERROR;
-
-		PlanetManager* planetManager = zone->getPlanetManager();
-		TerrainManager* terrainManager = planetManager->getTerrainManager();
+		CreatureObject* player = cast<CreatureObject*>(creature);
 
 		int cityPlayerCount = 0;
 
-		ManagedReference<CityRegion*> city = player->getCityRegion().get();
+		ManagedReference<CityRegion*> city = player->getCityRegion();
 
-		if (city != nullptr) {
+		if (city != NULL) {
 			cityPlayerCount = city->getCurrentPlayerCount();
 		}
 
-		ManagedReference<SceneObject*> cell = creature->getParent().get();
+		ManagedReference<SceneObject*> cell = creature->getParent();
 
 		int cellid = 0;
 		uint32 buildingTemplate = 0;
-		SharedStructureObjectTemplate* buildingTemplateObject = nullptr;
+		SharedStructureObjectTemplate* buildingTemplateObject = NULL;
 		ManagedReference<SceneObject*> building;
 
-		if (cell != nullptr && cell->isCellObject()) {
+		if (cell != NULL && cell->isCellObject()) {
 			cellid = (cast<CellObject*>(cell.get()))->getCellNumber();
-			building = cell->getParent().get();
+			building = cell->getParent();
 			buildingTemplate = building->getServerObjectCRC();
 			buildingTemplateObject = dynamic_cast<SharedStructureObjectTemplate*>(building->getObjectTemplate());
 		}
@@ -64,7 +57,7 @@ public:
 		StringBuffer msg;
 
 		float posX = creature->getPositionX(), posZ = creature->getPositionZ(), posY = creature->getPositionY();
-		const Quaternion* direction = creature->getDirection();
+		Quaternion* direction = creature->getDirection();
 
 		msg << "x = " << posX << ", z = " << posZ << ", y = " << posY << ", ow = " << direction->getW()
 				<< ", ox = " << direction->getX() << ", oz = " << direction->getZ() << ", oy = " << direction->getY()
@@ -75,49 +68,18 @@ public:
 
 		if (cityPlayerCount != 0)
 			msg << endl << "current players in the city:" << cityPlayerCount;
-
+			
 		CloseObjectsVector* vec = (CloseObjectsVector*) player->getCloseObjects();
-
-		if (vec != nullptr) {
+		
+		if (vec != NULL) {
 			msg << endl << "in range object count = " << vec->size() << endl;
 		}
 
 		msg << "active areas size = " << player->getActiveAreasSize() << endl;
 
-		int heightCacheHitCount = terrainManager->getCacheHitCount();
-		int heightCacheMissCount = terrainManager->getCacheMissCount();
-		int cacheClearCount = terrainManager->getCacheClearCount();
-		int cacheClearHeightCount = terrainManager->getCacheClearHeightsCount();
-		int cacheSize = terrainManager->getCachedValuesCount();
-		int evictCount = terrainManager->getCacheEvictCount();
-
-		int total = Math::max(heightCacheHitCount + heightCacheMissCount, 1);
-
-		msg << "height cache total hit count = " << heightCacheHitCount << ", total miss count = " << heightCacheMissCount
-				<< ", total hit rate = " << ((float)heightCacheHitCount / (float)total) * 100 << "% "
-						", clear count = " << cacheClearCount <<
-						", clear hit count = " << cacheClearHeightCount <<
-						", evict count = " << evictCount <<
-						", cache size = " << cacheSize << endl;
-
 		creature->sendSystemMessage(msg.toString());
 
 		ChatManager* chatManager = server->getZoneServer()->getChatManager();
-
-		// Dump first 10 active areas
-		SortedVector<ManagedReference<ActiveArea*>> areas = *player->getActiveAreas();
-
-		if (areas.size() > 0) {
-			msg << endl << "-- active area detail (max 10) --" << endl << endl;
-
-			for (int i = 0; i < Math::min(areas.size(), 10); ++i) {
-					ManagedReference<ActiveArea*>& area = areas.get(i);
-					JSONSerializationType areaJSON;
-					area->writeJSON(areaJSON);
-					msg << areaJSON.dump().c_str() << endl << endl;
-			}
-		}
-
 		chatManager->sendMail("System", "dumpZoneInformation", msg.toString(), player->getFirstName());
 
 		return SUCCESS;

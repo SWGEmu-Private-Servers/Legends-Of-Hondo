@@ -9,6 +9,7 @@
 #define PLAYERTEACHSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/objects/player/sui/callbacks/PlayerTeachConfirmSuiCallback.h"
 
 class PlayerTeachSuiCallback : public SuiCallback {
 
@@ -16,9 +17,7 @@ public:
 	PlayerTeachSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 	}
 
-	void run(CreatureObject* teacher, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* teacher, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!sui->isListBox() || cancelPressed || args->size() <= 0)
 			return;
 
@@ -32,9 +31,9 @@ public:
 		if (listBox->getMenuSize() <= index || index < 0)
 			return;
 
-		ManagedReference<SceneObject*> usingObject = listBox->getUsingObject().get();
+		ManagedReference<SceneObject*> usingObject = listBox->getUsingObject();
 
-		if (usingObject == nullptr || !usingObject->isCreatureObject())
+		if (usingObject == NULL || !usingObject->isCreatureObject())
 			return;
 
 		CreatureObject* student = cast<CreatureObject*>(usingObject.get());

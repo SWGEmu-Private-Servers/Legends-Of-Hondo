@@ -8,6 +8,7 @@
 #include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/ZoneServer.h"
 #include "server/zone/objects/guild/GuildObject.h"
+#include "server/zone/objects/guild/GuildMemberInfo.h"
 
 class GuildstatusCommand : public QueueCommand {
 public:
@@ -32,7 +33,7 @@ public:
 
 		ZoneServer* zoneServer = server->getZoneServer();
 
-		ManagedReference<SceneObject*> obj = nullptr;
+		ManagedReference<SceneObject*> obj = NULL;
 
 		UnicodeTokenizer tokenizer(arguments);
 		tokenizer.setDelimeter(" ");
@@ -48,10 +49,10 @@ public:
 			obj = zoneServer->getObject(targetPlayerID);
 		}
 
-		if (obj == nullptr || !obj->isCreatureObject())
+		if (obj == NULL || !obj->isCreatureObject())
 			obj = zoneServer->getObject(target);
 
-		if (obj == nullptr || !obj->isPlayerCreature()) {
+		if (obj == NULL || !obj->isPlayerCreature()) {
 			player->sendSystemMessage("@base_player:guildstatus_not_player"); //You may only check the guild status of players.
 			return GENERALERROR;
 		}
@@ -61,22 +62,24 @@ public:
 		StringIdChatParameter params;
 		params.setTU(targetCreature->getDisplayedName());
 
-		if (!targetCreature->isInGuild()) {
+		if (!creature->isInGuild()) {
 			params.setStringId("@base_player:guildstatus_not_in_guild"); //%TU is not in a guild.
 			player->sendSystemMessage(params);
 			return GENERALERROR;
 		}
 
-		ManagedReference<GuildObject*> guild = targetCreature->getGuildObject().get();
+		ManagedReference<GuildObject*> guild = targetCreature->getGuildObject();
 		uint64 objid = targetCreature->getObjectID();
 
-		if (guild == nullptr)
+		if (guild == NULL)
 			return GENERALERROR;
 
-		if (!guild->hasMember(objid))
+		GuildMemberInfo* gmi = guild->getMember(objid);
+
+		if (gmi == NULL)
 			return GENERALERROR;
 
-		String guildTitle = guild->getGuildMemberTitle(objid);
+		String guildTitle = gmi->getGuildTitle();
 		params.setTT(guild->getGuildName());
 
 		StringBuffer stringid;

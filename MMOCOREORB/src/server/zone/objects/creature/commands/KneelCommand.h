@@ -5,6 +5,10 @@
 #ifndef KNEELCOMMAND_H_
 #define KNEELCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/Zone.h"
+#include "server/zone/managers/creature/CreatureManager.h"
+
 class KneelCommand : public QueueCommand {
 public:
 
@@ -21,13 +25,20 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
-		if (creature->hasAttackDelay())
-			return GENERALERROR;
+		/*if (creature->isDizzied()) {
+			if (creature->getPosture() != CreaturePosture::CROUCHED) {
+				creature->setPosture(CreaturePosture::KNOCKEDDOWN);
+				creature->sendSystemMessage("@cbt_spam:dizzy_fall_down_single");
 
-		creature->setPosture(CreaturePosture::CROUCHED, true);
+				return SUCCESS;
+			}
+		}*/
 
-		if (creature->isDizzied() && System::random(100) < 85)
+		if (creature->isDizzied() && System::random(100) < 85) {
 			creature->queueDizzyFallEvent();
+		} else {
+			creature->setPosture(CreaturePosture::CROUCHED, true);
+		}
 
 		return SUCCESS;
 	}

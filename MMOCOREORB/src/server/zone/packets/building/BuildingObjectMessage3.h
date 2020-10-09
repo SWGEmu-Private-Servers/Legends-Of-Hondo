@@ -4,9 +4,10 @@
 
 #ifndef BUILDINGOBJECTMESSAGE3_H_
 #define BUILDINGOBJECTMESSAGE3_H_
-/*
-#include "server/zone/packets/BaseLineMessage.h"
-#include "server/zone/objects/building/BuildingObject.h"
+
+#include "../BaseLineMessage.h"
+#include "../../objects/building/BuildingObject.h"
+#include "../../objects/tangible/campkit/campsite/CampSite.h"
 
 class BuildingObjectMessage3 : public BaseLineMessage {
 public:
@@ -35,7 +36,7 @@ public:
 		//System::out << msg.toString();
 	}
 
-	*//*BuildingObjectMessage3(CampSite *camp)
+	/*BuildingObjectMessage3(CampSite *camp)
 			: BaseLineMessage(camp->getObjectID(), 0x4255494F, 3, 0x0B) {
 		insertFloat(1.0);
 		insertAscii("camp");
@@ -57,8 +58,7 @@ public:
 
 		//StringBuffer msg;
 		//msg << hex << "BuildingObjectMessage3 [Object = " << buio->getObjectID() << "]\n";
-		//System::out << msg.toString();*//*
+		//System::out << msg.toString();*/
 	}
 };
-*/
 #endif /*BUILDINGOBJECTMESSAGE3_H_*/

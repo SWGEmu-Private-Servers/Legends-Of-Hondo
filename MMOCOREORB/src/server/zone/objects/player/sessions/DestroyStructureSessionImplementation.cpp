@@ -13,11 +13,11 @@
 #include "server/zone/objects/player/sui/callbacks/DestroyStructureRequestSuiCallback.h"
 #include "server/zone/objects/player/sui/inputbox/SuiInputBox.h"
 #include "server/zone/objects/player/sui/listbox/SuiListBox.h"
+#include "server/zone/objects/structure/StructureObject.h"
 #include "server/zone/Zone.h"
 
 #include "server/zone/managers/gcw/GCWManager.h"
-#include "server/zone/managers/gcw/tasks/DestroyFactionInstallationTask.h"
-
+#include "server/zone/managers/gcw/DestroyFactionInstallationTask.h"
 int DestroyStructureSessionImplementation::initializeSession() {
 	//TODO: Temporary until CreatureObject* dependency removed.
 	if (!creatureObject->isPlayerCreature())
@@ -106,16 +106,16 @@ int DestroyStructureSessionImplementation::sendDestroyCode() {
 int DestroyStructureSessionImplementation::destroyStructure() {
 	creatureObject->sendSystemMessage("@player_structure:processing_destruction"); //Processing confirmed structure destruction...
 
-	if (structureObject == nullptr || structureObject->getZone() == nullptr)
+	if (structureObject == NULL || structureObject->getZone() == NULL)
 		return cancelSession();
 
-	if (structureObject->isGCWBase()) {
+	if(structureObject->isGCWBase()) {
 		Zone* zone = structureObject->getZone();
-		if (zone == nullptr)
+		if(zone == NULL)
 			return cancelSession();
 
 		GCWManager* gcwMan = zone->getGCWManager();
-		if (gcwMan == nullptr)
+		if(gcwMan == NULL)
 			return cancelSession();
 
 		gcwMan->doBaseDestruction(structureObject);

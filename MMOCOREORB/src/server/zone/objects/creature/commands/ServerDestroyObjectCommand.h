@@ -9,8 +9,6 @@
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/tangible/tool/antidecay/AntiDecayKit.h"
-#include "server/zone/managers/auction/AuctionsMap.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
 
 
 class ServerDestroyObjectCommand : public QueueCommand {
@@ -33,7 +31,7 @@ public:
 
 		ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(target);
 
-		if (object == nullptr)
+		if (object == NULL)
 			return GENERALERROR;
 
 		if (!creature->isPlayerCreature())
@@ -49,18 +47,18 @@ public:
 		if (object->isWaypointObject()) {
 			Reference<PlayerObject*> playerObject = creature->getSlottedObject("ghost").castTo<PlayerObject*>( );
 
-			if (playerObject != nullptr)
+			if (playerObject != NULL)
 				playerObject->removeWaypoint(target);
 
 			return SUCCESS;
 		}
 
-		ManagedReference<SceneObject*> objectParent = object->getParent().get();
+		ManagedReference<SceneObject*> objectParent = object->getParent();
 
 		if (!object->checkContainerPermission(creature, ContainerPermissions::MOVECONTAINER))
 			return GENERALERROR;
 
-		if (objectParent != nullptr && !objectParent->checkContainerPermission(creature, ContainerPermissions::MOVEOUT))
+		if (objectParent != NULL && !objectParent->checkContainerPermission(creature, ContainerPermissions::MOVEOUT))
 			return GENERALERROR;
 
 		for (int i = 0; i < object->getArrangementDescriptorSize(); ++i) {
@@ -74,8 +72,6 @@ public:
 			}
 		}
 
-		TransactionLog trx(creature, TrxCode::SERVERDESTROYOBJECT, object);
-
 		if (object->isASubChildOf(creature)){
 
 			if(object->isTangibleObject()){
@@ -84,57 +80,37 @@ public:
 				if(tano->hasAntiDecayKit()){
 					ManagedReference<SceneObject*> inventory = creature->getSlottedObject("inventory");
 
-					if(inventory == nullptr){
+					if(inventory == NULL){
 						creature->sendSystemMessage("@veteran_new:failed_kit_create"); // "This item has Anti Decay applied to it but there was a failure to recreate the Anti Decay Kit."
 						return GENERALERROR;
 					}
 
-					if(inventory->isContainerFullRecursive()){
+					if(inventory->getContainerVolumeLimit() < (inventory->getCountableObjectsRecursive() + 1)){
 						creature->sendSystemMessage("@veteran_new:inventory_full"); // The item can not be deleted because it has Anti Decay applied to it but you do not have room in your inventory to retrieve the Anti Decay Kit that will be created after destroying this item.
 						return GENERALERROR;
 					}
 
 					ManagedReference<SceneObject*> adkSceno = tano->removeAntiDecayKit();
 
-					if(adkSceno == nullptr){
+					if(adkSceno == NULL){
 						creature->sendSystemMessage("@veteran_new:failed_kit_create"); // "This item has Anti Decay applied to it but there was a failure to recreate the Anti Decay Kit."
 						return GENERALERROR;
 					}
 
 					AntiDecayKit* adk = adkSceno.castTo<AntiDecayKit*>();
 
-					if(adk == nullptr){
+					if(adk == NULL){
 						creature->sendSystemMessage("@veteran_new:failed_kit_create"); // "This item has Anti Decay applied to it but there was a failure to recreate the Anti Decay Kit."
 						return GENERALERROR;
 					}
 
-					if (adk->getParent().get() == nullptr) {
-						AuctionManager* auctionManager = server->getZoneServer()->getAuctionManager();
+					Locker adkLocker(adk);
+					adk->setUsed(false);
 
-						if (auctionManager != nullptr) {
-							AuctionsMap* auctionsMap = auctionManager->getAuctionMap();
-
-							if (auctionsMap != nullptr && !auctionsMap->containsItem(adk->getObjectID())) {
-								Locker adkLocker(adk);
-								adk->setUsed(false);
-
-								TransactionLog trxADK(object, creature, adk, TrxCode::ADKREMOVE);
-								trxADK.groupWith(trx);
-
-								inventory->transferObject(adk, -1, false);
-								adk->sendTo(creature, true);
-								creature->sendSystemMessage("@veteran_new:kit_created"); // "This item had Anti Decay applied to it. A new Anti Decay Kit has been placed in your inventory."
-							}
-						}
-					}
+					inventory->transferObject(adk, -1, false);
+					adk->sendTo(creature, true);
+					creature->sendSystemMessage("@veteran_new:kit_created"); // "This item had Anti Decay applied to it. A new Anti Decay Kit has been placed in your inventory."
 				}
-			}
-
-			if (trx.isVerbose()) {
-				// Force a synchronous export because the object will be deleted before we can export it!
-				trx.addRelatedObject(object, true);
-				trx.setExportRelatedObjects(true);
-				trx.exportRelated();
 			}
 
 			destroyObject(object, creature);

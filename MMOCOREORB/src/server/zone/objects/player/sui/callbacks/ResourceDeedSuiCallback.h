@@ -19,32 +19,30 @@ public:
 		nodeName = name;
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!sui->isListBox() || cancelPressed)
 			return;
 
 		SuiListBox* listBox = cast<SuiListBox*>( sui);
 
-		ManagedReference<SceneObject*> obj = sui->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = sui->getUsingObject();
 
-		if (obj == nullptr)
+		if (obj == NULL)
 			return;
 
 		ResourceDeed* deed = cast<ResourceDeed*>( obj.get());
 
-		if (deed == nullptr)
+		if (deed == NULL)
 			return;
 
 		ManagedReference<SceneObject*> inventory = creature->getSlottedObject("inventory");
 
-		if (inventory == nullptr || !deed->isASubChildOf(inventory)) //No longer in inventory.
+		if (inventory == NULL || !deed->isASubChildOf(inventory)) //No longer in inventory.
 			return;
 
 		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
 
-		if (ghost == nullptr)
+		if (ghost == NULL)
 			return;
 
 		bool backPressed = false;
@@ -78,12 +76,11 @@ public:
 			ManagedReference<ResourceSpawn*> spawn = resourceManager->getResourceSpawn(nodeName);
 
 			//They chose the resource, eat the deed and give them what they want...fuck it.
-			if (spawn != nullptr) {
+			if (spawn != NULL) {
+				resourceManager->givePlayerResource(creature, nodeName, ResourceManager::RESOURCE_DEED_QUANTITY);
+
 				Locker clocker(deed, creature);
 				deed->destroyDeed();
-				clocker.release();
-
-				resourceManager->givePlayerResource(creature, nodeName, ResourceManager::RESOURCE_DEED_QUANTITY);
 
 				return;
 			}
@@ -94,7 +91,7 @@ public:
 				listBox->removeAllMenuItems();
 
 				spawn = resourceManager->getResourceSpawn(nodeName); //Check again, this means they are looking at stats.
-				if (spawn != nullptr) {
+				if (spawn != NULL) {
 					spawn->addStatsToDeedListBox(listBox);
 				} else {
 					resourceManager->addNodeToListBox(listBox, nodeName);

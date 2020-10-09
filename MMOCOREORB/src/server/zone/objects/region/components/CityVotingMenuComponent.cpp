@@ -8,24 +8,19 @@
 #include "CityVotingMenuComponent.h"
 #include "server/zone/ZoneServer.h"
 #include "server/zone/objects/region/CityRegion.h"
-#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/managers/city/CityManager.h"
 #include "server/zone/packets/object/ObjectMenuResponse.h"
 
-void CityVotingMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, ObjectMenuResponse* menuResponse, CreatureObject* player) const {
-	ManagedReference<CityRegion*> city = sceneObject->getCityRegion().get();
+void CityVotingMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, ObjectMenuResponse* menuResponse, CreatureObject* player) {
+	ManagedReference<CityRegion*> city = sceneObject->getCityRegion();
 
-	if (city == nullptr || (!city->isCitizen(player->getObjectID()) && !player->getPlayerObject()->isPrivileged()))
+	if (city == NULL || !city->isCitizen(player->getObjectID()))
 			return;
 
 	Locker _lock(city);
 
 	menuResponse->addRadialMenuItem(224, 3, "@city/city:mayoral_race"); //Mayoral Race
 	menuResponse->addRadialMenuItemToRadialID(224, 225, 3, "@city/city:mayoral_standings"); //Mayoral Standings
-
-	if (!city->isCitizen(player->getObjectID()))
-			return;
-
 	menuResponse->addRadialMenuItemToRadialID(224, 226, 3, "@city/city:mayoral_vote"); //Vote for Mayor
 
 	if (!city->isCandidate(player->getObjectID()))
@@ -34,10 +29,10 @@ void CityVotingMenuComponent::fillObjectMenuResponse(SceneObject* sceneObject, O
 		menuResponse->addRadialMenuItemToRadialID(224, 228, 3, "@city/city:mayoral_unregister"); //Unregister from Race
 }
 
-int CityVotingMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, CreatureObject* player, byte selectID) const {
-	ManagedReference<CityRegion*> city = sceneObject->getCityRegion().get();
+int CityVotingMenuComponent::handleObjectMenuSelect(SceneObject* sceneObject, CreatureObject* player, byte selectID) {
+	ManagedReference<CityRegion*> city = sceneObject->getCityRegion();
 
-	if (city == nullptr)
+	if (city == NULL || !city->isCitizen(player->getObjectID()))
 		return 0;
 
 	sceneObject->unlock();

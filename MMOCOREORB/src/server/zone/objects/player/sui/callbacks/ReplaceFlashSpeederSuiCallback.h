@@ -9,7 +9,6 @@
 #define REPLACEFLASHSPEEDERSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
 
 class ReplaceFlashSpeederSuiCallback : public SuiCallback {
 
@@ -23,28 +22,27 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* player, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 
 		if( cancelPressed )
 			return;
 
 		// Player must have enough credits
-		if (!player->verifyCredits(FLASH_SPEEDER_COST)) {
+		if( player->getCashCredits() + player->getBankCredits() < FLASH_SPEEDER_COST ){
 			player->sendSystemMessage( "@veteran:flash_speeder_no_credits" ); // "You do not have enough credits to receive a replacement."
 			return;
 		}
 
 		// Generate new deed
 		SceneObject* inventory = player->getSlottedObject("inventory");
-		if(inventory == nullptr) {
+		if(inventory == NULL) {
 			player->sendSystemMessage( "@veteran:flash_speeder_grant_failed" ); // "Flash Speeder deed grant has failed. This could be the result of being ineligible or not having enough credits to pay for the replacement fee."
 			return;
 		}
 
 		String speederDeedTemplate = "object/tangible/deed/vehicle_deed/speederbike_flash_deed.iff";
 		Reference<SceneObject*> speederDeed = server->createObject(speederDeedTemplate.hashCode(), 1);
-		if(speederDeed == nullptr) {
+		if(speederDeed == NULL) {
 			player->sendSystemMessage( "@veteran:flash_speeder_grant_failed" ); // "Flash Speeder deed grant has failed. This could be the result of being ineligible or not having enough credits to pay for the replacement fee."
 			return;
 		}
@@ -58,8 +56,15 @@ public:
 
 		inventory->broadcastObject(speederDeed, true);
 
-		TransactionLog trx(player, TrxCode::VEHICLEREPAIRS, FLASH_SPEEDER_COST, true);
-		player->subtractCredits(FLASH_SPEEDER_COST);
+		// Deduct replacement cost
+		if( player->getCashCredits() >= FLASH_SPEEDER_COST ){
+			player->setCashCredits(player->getCashCredits() - FLASH_SPEEDER_COST, true);
+		}
+		else{
+			int fromBank = FLASH_SPEEDER_COST - player->getCashCredits();
+			player->setCashCredits(0, true);
+			player->setBankCredits(player->getBankCredits() - fromBank, true);
+		}
 
 		player->sendSystemMessage( "@veteran:flash_speeder_granted");  // "A Flash Speeder deed has been placed in your inventory."
 

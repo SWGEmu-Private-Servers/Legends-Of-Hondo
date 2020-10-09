@@ -25,28 +25,21 @@ public:
 		this->city = city;
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
-		if(cancelPressed || server == nullptr)
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
+		if(cancelPressed || server == NULL)
 			return;
 
 		ManagedReference<CityRegion*> cityObject = city.get();
-		if(cityObject == nullptr)
+		if(cityObject == NULL)
 			return;
 
 		ManagedReference<Zone*> zone = this->zne.get();
-		if (zone == nullptr)
-			return;
-
-		PlayerObject* ghost = creature->getPlayerObject();
-		if (ghost == nullptr)
+		if (zone == NULL)
 			return;
 
 		String cityName = args->get(0).toString();
 
-		ZoneProcessServer* zps = creature->getZoneProcessServer();
-		NameManager* nameManager = zps->getNameManager();
+		NameManager* nameManager = NameManager::instance();
 
 		int result = nameManager->validateCityName(cityName);
 
@@ -77,7 +70,7 @@ public:
 			return;
 		}
 
-		if(cityObject->getMayorID() != creature->getObjectID() && !ghost->isStaff())
+		if(cityObject->getMayorID() != creature->getObjectID())
 			return;
 
 		Locker mlock(cityManager, creature);
@@ -100,7 +93,7 @@ public:
 		if(cityObject->hasShuttleInstallation()) {
 			Reference<PlanetTravelPoint*> tp = planetManager->getPlanetTravelPoint(oldName);
 
-			if(tp != nullptr) {
+			if(tp != NULL) {
 				Reference<PlanetTravelPoint*> newTP = tp;
 				newTP->setPointName(cityName);
 				planetManager->removePlayerCityTravelPoint(oldName);

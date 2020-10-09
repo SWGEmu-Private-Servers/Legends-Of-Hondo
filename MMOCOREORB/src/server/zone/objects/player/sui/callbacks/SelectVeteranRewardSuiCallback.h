@@ -9,6 +9,7 @@
 #define SELECTVETERANREWARDSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/managers/stringid/StringIdManager.h"
 
 class SelectVeteranRewardSuiCallback : public SuiCallback {
 
@@ -18,11 +19,10 @@ public:
 
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 
 		PlayerManager* playerManager = player->getZoneServer()->getPlayerManager();
-		if( !suiBox->isListBox() || playerManager == nullptr )
+		if( !suiBox->isListBox() || playerManager == NULL )
 			return;
 
 		if( cancelPressed ){
@@ -36,12 +36,6 @@ public:
 		}
 
 		int index = Integer::valueOf(args->get(0).toString());
-
-		if (index < 0) {
-			playerManager->cancelVeteranRewardSession( player );
-			return;
-		}
-
 
 		SuiListBox* listBox = cast<SuiListBox*>( suiBox);
 		uint64 itemId = listBox->getMenuObjectID(index);

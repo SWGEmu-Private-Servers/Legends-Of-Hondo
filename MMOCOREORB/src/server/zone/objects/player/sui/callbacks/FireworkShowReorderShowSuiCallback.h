@@ -5,6 +5,7 @@
 #include "server/zone/objects/player/sui/SuiCallback.h"
 #include "server/zone/objects/tangible/firework/components/FireworkShowDataComponent.h"
 #include "server/zone/objects/player/sui/listbox/SuiListBox.h"
+#include "server/zone/managers/object/ObjectManager.h"
 
 class FireworkShowReorderShowSuiCallback : public SuiCallback {
 public:
@@ -12,9 +13,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox())
 			return;
 
@@ -33,17 +32,17 @@ public:
 
 		ManagedReference<FireworkObject*> firework = (server->getObject(fireworkObjectID)).castTo<FireworkObject*>();
 
-		if (firework == nullptr || !firework->isFireworkObject())
+		if (firework == NULL || !firework->isFireworkObject())
 			return;
 
-		ManagedReference<SceneObject*> fireworkShow = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> fireworkShow = suiBox->getUsingObject();
 
-		if (fireworkShow == nullptr || !fireworkShow->isFireworkObject())
+		if (fireworkShow == NULL || !fireworkShow->isFireworkObject())
 			return;
 
 		DataObjectComponent* data = fireworkShow->getDataObjectComponent()->get();
 
-		if(data == nullptr || !data->isFireworkShowData())
+		if(data == NULL || !data->isFireworkShowData())
 			return;
 
 		FireworkShowDataComponent* fireworkShowData = cast<FireworkShowDataComponent*>(data);

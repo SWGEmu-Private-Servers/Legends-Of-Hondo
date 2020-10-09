@@ -18,9 +18,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox())
 			return;
 
@@ -30,7 +28,7 @@ public:
 		ManagedReference<Facade*> facade = player->getActiveSession(SessionFacadeType::CREATEVENDOR);
 		ManagedReference<CreateVendorSession*> session = dynamic_cast<CreateVendorSession*>(facade.get());
 
-		if (session == nullptr)
+		if (session == NULL)
 			return;
 
 		if (cancelPressed) {

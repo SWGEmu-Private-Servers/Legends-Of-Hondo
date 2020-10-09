@@ -1,13 +1,15 @@
+#include "engine/engine.h"
+
 #include "server/zone/Zone.h"
 #include "server/chat/ChatManager.h"
 #include "server/zone/managers/reaction/ReactionManager.h"
 #include "server/zone/objects/creature/CreatureObject.h"
-#include "templates/params/creature/CreatureAttribute.h"
-#include "server/zone/objects/creature/ai/AiAgent.h"
+#include "server/zone/objects/creature/DroidObject.h"
+#include "server/zone/objects/creature/CreatureAttribute.h"
+#include "server/zone/objects/creature/AiAgent.h"
 #include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/player/sui/messagebox/SuiMessageBox.h"
 #include "server/zone/objects/player/sui/callbacks/ReactionFinePaymentSuiCallback.h"
-#include "server/zone/objects/tangible/weapon/WeaponObject.h"
 
 void ReactionManagerImplementation::loadLuaConfig() {
 	Lua* lua = new Lua();
@@ -92,9 +94,6 @@ void ReactionManagerImplementation::loadLuaConfig() {
 	}
 
 	info("Loaded " + String::valueOf(emoteReactionFines.size()) + " emote reaction records.", true);
-
-	delete lua;
-	lua = nullptr;
 }
 
 void ReactionManagerImplementation::sendChatReaction(AiAgent* npc, int type, int state, bool force) {
@@ -198,19 +197,19 @@ void ReactionManagerImplementation::sendChatReaction(AiAgent* npc, int type, int
 		message << ":" << typeString << num;
 		StringIdChatParameter chat;
 		chat.setStringId(message.toString());
-		zoneServer->getChatManager()->broadcastChatMessage(npc, chat, 0, 0, npc->getMoodID());
+		zoneServer->getChatManager()->broadcastMessage(npc,chat,0,0,0);
 
 		npc->getCooldownTimerMap()->updateToCurrentAndAddMili("reaction_chat", 60000); // 60 second cooldown
 	}
 }
 
 void ReactionManagerImplementation::emoteReaction(CreatureObject* emoteUser, AiAgent* emoteTarget, int emoteid) {
-	if (emoteUser == nullptr || emoteTarget == nullptr)
+	if (emoteUser == NULL || emoteTarget == NULL)
 		return;
 
 	Zone* zone = emoteUser->getZone();
 
-	if (zone == nullptr || zone->getZoneName() == "tutorial")
+	if (zone == NULL || zone->getZoneName() == "tutorial")
 		return;
 
 	if (emoteTarget->isIncapacitated() || emoteTarget->isDead() || emoteTarget->isInCombat())
@@ -223,7 +222,7 @@ void ReactionManagerImplementation::emoteReaction(CreatureObject* emoteUser, AiA
 	ChatManager* chatManager = zoneServer->getChatManager();
 	PlayerObject* playerObject = emoteUser->getPlayerObject();
 
-	if (playerObject == nullptr)
+	if (playerObject == NULL)
 		return;
 
 	if (emoteTarget->getDistanceTo(emoteUser) > 16.f)
@@ -257,7 +256,7 @@ void ReactionManagerImplementation::emoteReaction(CreatureObject* emoteUser, AiA
 	EmoteReactionFine* reactionFine = getEmoteReactionFine(emoteUser, emoteTarget, reactionLevel);
 
 	// No reaction if there is no fine data
-	if (reactionFine == nullptr)
+	if (reactionFine == NULL)
 		return;
 
 	int randomQuip = reactionFine->getRandomQuip();
@@ -265,7 +264,7 @@ void ReactionManagerImplementation::emoteReaction(CreatureObject* emoteUser, AiA
 	if (randomQuip != -1) {
 		StringIdChatParameter param(getReactionQuip(randomQuip));
 		param.setTT(emoteUser->getObjectID());
-		chatManager->broadcastChatMessage(emoteTarget, param, 0, 0, emoteTarget->getMoodID());
+		chatManager->broadcastMessage(emoteTarget, param, 0, 0, 0);
 	}
 
 	if (reactionFine->getFactionFine() != 0)
@@ -299,8 +298,8 @@ void ReactionManagerImplementation::emoteReaction(CreatureObject* emoteUser, AiA
 }
 
 EmoteReactionFine* ReactionManagerImplementation::getEmoteReactionFine(CreatureObject* emoteUser, AiAgent* emoteTarget, int level) {
-	if (emoteUser == nullptr)
-		return nullptr;
+	if (emoteUser == NULL)
+		return NULL;
 
 	int rankCompare = 0;
 
@@ -311,14 +310,14 @@ EmoteReactionFine* ReactionManagerImplementation::getEmoteReactionFine(CreatureO
 		if (targetReactionRank == 0) {
 			Reference<ReactionRankData*> rankData = getReactionRankData(emoteTarget->getCreatureTemplate()->getTemplateName());
 
-			if (rankData == nullptr)
-				return nullptr;
+			if (rankData == NULL)
+				return NULL;
 
 			targetReactionRank = rankData->getRandomRank();
 
 			// No reaction if the target has no reaction rank
 			if (targetReactionRank == 0)
-				return nullptr;
+				return NULL;
 
 			// Set rank to creature object so that it isnt randomized on every emote
 			emoteTarget->setReactionRank(targetReactionRank);
@@ -350,7 +349,7 @@ EmoteReactionFine* ReactionManagerImplementation::getEmoteReactionFine(CreatureO
 		}
 	}
 
-	return nullptr;
+	return NULL;
 }
 
 ReactionRankData* ReactionManagerImplementation::getReactionRankData(const String& name) {
@@ -361,7 +360,7 @@ ReactionRankData* ReactionManagerImplementation::getReactionRankData(const Strin
 			return data;
 	}
 
-	return nullptr;
+	return NULL;
 }
 
 String ReactionManagerImplementation::getReactionQuip(int num) {
@@ -381,32 +380,30 @@ void ReactionManagerImplementation::doKnockdown(CreatureObject* victim, AiAgent*
 
 	WeaponObject* weapon = attacker->getWeapon();
 
-	if (weapon != nullptr && weapon->isRangedWeapon())
+	if (weapon != NULL && weapon->isRangedWeapon())
 		knockdownAnim = "ranged_melee_light";
 	else
 		knockdownAnim = "attack_high_center_light_0";
 
+	// TODO: Get knockdown animation working
+	//attacker->doCombatAnimation(victim, knockdownAnim.hashCode(), 0, 0xFF);
 
-	victim->inflictDamage(attacker, CreatureAttribute::MIND, victim->getHAM(CreatureAttribute::MIND) + 200, true, true, true);
+	victim->inflictDamage(attacker, CreatureAttribute::MIND, victim->getHAM(CreatureAttribute::MIND) + 200, true);
 
-
-	victim->updatePostures(); // set posture, don't send posture message, but send DeltaCreo3
-
-	attacker->doCombatAnimation(victim, knockdownAnim.hashCode(), HIT, 0xFF); // play attacker animation - This will update the victim's posture on the client
 }
 
 void ReactionManagerImplementation::doReactionFineMailCheck(CreatureObject* player) {
-	if (player == nullptr)
+	if (player == NULL)
 		return;
 
 	PlayerObject* playerObject = player->getPlayerObject();
 
-	if (playerObject == nullptr)
+	if (playerObject == NULL)
 		return;
 
 	ChatManager* chatManager = zoneServer->getChatManager();
 
-	if (chatManager == nullptr)
+	if (chatManager == NULL)
 		return;
 
 	if (playerObject->getReactionFines() == 0)

@@ -5,25 +5,17 @@
 package server.zone.objects.area;
 
 import server.zone.objects.area.ActiveArea;
+import system.util.SortedVector;
 import system.util.HashTable;
 import engine.core.ManagedObject;
+import server.zone.managers.creature.SpawnGroup;
 import server.zone.objects.area.SpawnAreaObserver;
 import engine.util.Observable;
 import server.zone.objects.scene.SceneObject;
 import system.lang.Time;
 
-include server.zone.managers.creature.LairSpawn;
-include system.util.Vector;
-include engine.util.u3d.Vector3;
-
-@json
 class SpawnArea extends ActiveArea {
-	@dereferenced
-	@rawTemplate(value = "Reference<LairSpawn*>")
-	protected transient Vector possibleSpawns;
-
-	protected int totalWeighting;
-
+	protected transient SpawnGroup spawnGroup;
 	protected int totalSpawnCount;
 	protected int maxSpawnLimit;
 
@@ -38,20 +30,23 @@ class SpawnArea extends ActiveArea {
 
 	protected SpawnAreaObserver exitObserver;
 
+	protected unsigned int spawnGroupTemplateCRC;
+
 	@dereferenced
-	@rawTemplate(value = "ManagedWeakReference<SpawnArea*>")
-	protected Vector noSpawnAreas;
+	protected Vector<SpawnArea> noSpawnAreas;
 
 	protected int tier;
+	protected int spawnConstant;
 
 	public final static int MINSPAWNINTERVAL = 2000; //msec
 
 	public SpawnArea() {
-		totalWeighting = 0;
+		spawnGroupTemplateCRC = 0;
 		totalSpawnCount = 0;
 		maxSpawnLimit = 0;
 		spawnTypes.setNullValue(0);
 		exitObserver = null;
+		spawnConstant = 0;
 		Logger.setLoggingName("SpawnArea");
 	}
 
@@ -62,15 +57,9 @@ class SpawnArea extends ActiveArea {
 
 	public native int notifyObserverEvent(unsigned int eventType, Observable observable, ManagedObject arg1, long arg2);
 
-	@local
 	@preLocked
-	public native void buildSpawnList(Vector<unsigned int> groupCRCs);
-
-	@local
-	@rawTemplate(value = "Reference<LairSpawn*>")
-	@read
-	public final Vector getSpawnList() {
-		return possibleSpawns;
+	public void setTemplate(unsigned int tempCRC) {
+		spawnGroupTemplateCRC = tempCRC;
 	}
 
 	@preLocked
@@ -78,14 +67,9 @@ class SpawnArea extends ActiveArea {
 		tier = n;
 	}
 
-	@read
-	public int getTier() {
-		return tier;
-	}
-
-	@read
-	public int getTotalWeighting() {
-		return totalWeighting;
+	@preLocked
+	public void setSpawnConstant(int n) {
+		spawnConstant = n;
 	}
 
 	@preLocked
@@ -98,5 +82,25 @@ class SpawnArea extends ActiveArea {
 		noSpawnAreas.add(area);
 	}
 
-	public native void tryToSpawn(SceneObject object);
+	@local
+	@preLocked
+	public void setSpawnGroup(SpawnGroup group) {
+		spawnGroup = group;
+	}
+
+	@local
+	@dirty
+	public native SpawnGroup getSpawnGroup();
+
+	public void enqueueEnterEvent(SceneObject obj) {
+		notifyEnter(obj);
+	}
+
+	public native void notifyEnter(SceneObject object);
+	public native void notifyExit(SceneObject object);
+
+	@dirty
+	public native void notifyPositionUpdate(QuadTreeEntry obj);
+
+	public native int tryToSpawn(SceneObject object);
 }

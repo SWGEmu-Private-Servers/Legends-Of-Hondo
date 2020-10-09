@@ -4,16 +4,23 @@
 
 
 #include "NameManager.h"
-#include "engine/lua/Lua.h"
-#include <regex>
 
 #include "server/zone/ZoneProcessServer.h"
+#include "server/zone/ZoneClientSession.h"
+#include "server/zone/objects/player/Races.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 
 NameManager::NameManager() {
 	setLoggingName("NameManager");
 
 	initialize();
+
+	profaneNames = new Vector<String>(55, 5); //based on the original number of banned words
+	developerNames = new BannedNameSet();
+	reservedNames = new BannedNameSet();
+	fictionNames = new BannedNameSet();
+
+	fillNames();
 
 	setLogging(false);
 }
@@ -23,309 +30,324 @@ NameManager::NameManager(ZoneProcessServer* serv) : Logger("NameManager") {
 
 	initialize();
 
+	profaneNames = new Vector<String>(55, 5); //based on the original number of banned words
+	developerNames = new BannedNameSet();
+	reservedNames = new BannedNameSet();
+	fictionNames = new BannedNameSet();
+
+	fillNames();
+
 	setLogging(false);
+
 }
 
 NameManager::~NameManager() {
-	delete bothanData;
-	delete humanData;
-	delete ithorianData;
-	delete monCalData;
-	delete rodianData;
-	delete sullustanData;
-	delete trandoshanData;
-	delete twilekData;
-	delete wookieeData;
-	delete zabrakData;
 
-	delete energyResourceData;
-	delete mineralResourceData;
-	delete plainResourceData;
-	delete reactiveGasResourceData;
+	delete lua;
+
+	delete(profaneNames);
+	delete(developerNames);
+	delete(reservedNames);
+	delete(fictionNames);
 }
 
 void NameManager::initialize() {
-	loadConfigData();
-}
-
-void NameManager::loadConfigData(bool reload) {
-	Lua* lua = new Lua();
+	lua = new Lua();
 	lua->init();
 
-	if (!lua->runFile("scripts/managers/name/name_manager.lua")) {
-		error("Unable to load NameManager data.");
-		delete lua;
-		return;
+	info("loading configuration");
+	if(!loadConfigData()) {
+
+		loadDefaultConfig();
+
+		error("Configuration error(s), using defaults");
 	}
 
-	if (reload) {
-		delete bothanData;
-		delete humanData;
-		delete ithorianData;
-		delete monCalData;
-		delete rodianData;
-		delete sullustanData;
-		delete trandoshanData;
-		delete twilekData;
-		delete wookieeData;
-		delete zabrakData;
+	info("initialized");
 
-		delete energyResourceData;
-		delete mineralResourceData;
-		delete plainResourceData;
-		delete reactiveGasResourceData;
+}
 
-		reservedNames.removeAll();
-		stormtrooperPrefixes.removeAll();
-		scouttrooperPrefixes.removeAll();
-		darktrooperPrefixes.removeAll();
-		swamptrooperPrefixes.removeAll();
-	}
+bool NameManager::loadConfigFile() {
+	return lua->runFile("scripts/managers/name_manager.lua");
+}
+
+bool NameManager::loadConfigData() {
+	if (!loadConfigFile())
+		return false;
+
+	letterMappings.put("a", lua->getGlobalString("a"));
+	letterMappings.put("b", lua->getGlobalString("b"));
+	letterMappings.put("c", lua->getGlobalString("c"));
+	letterMappings.put("d", lua->getGlobalString("d"));
+	letterMappings.put("e", lua->getGlobalString("e"));
+	letterMappings.put("f", lua->getGlobalString("f"));
+	letterMappings.put("g", lua->getGlobalString("g"));
+	letterMappings.put("h", lua->getGlobalString("h"));
+	letterMappings.put("i", lua->getGlobalString("i"));
+	letterMappings.put("j", lua->getGlobalString("j"));
+	letterMappings.put("k", lua->getGlobalString("k"));
+	letterMappings.put("l", lua->getGlobalString("l"));
+	letterMappings.put("m", lua->getGlobalString("m"));
+	letterMappings.put("n", lua->getGlobalString("n"));
+	letterMappings.put("o", lua->getGlobalString("o"));
+	letterMappings.put("p", lua->getGlobalString("p"));
+	letterMappings.put("q", lua->getGlobalString("q"));
+	letterMappings.put("r", lua->getGlobalString("r"));
+	letterMappings.put("s", lua->getGlobalString("s"));
+	letterMappings.put("t", lua->getGlobalString("t"));
+	letterMappings.put("u", lua->getGlobalString("u"));
+	letterMappings.put("v", lua->getGlobalString("v"));
+	letterMappings.put("w", lua->getGlobalString("w"));
+	letterMappings.put("x", lua->getGlobalString("x"));
+	letterMappings.put("y", lua->getGlobalString("y"));
+	letterMappings.put("z", lua->getGlobalString("z"));
+
+	letterMappings.put("qu", lua->getGlobalString("qu"));
+	letterMappings.put("doublevowel", lua->getGlobalString("doublevowel"));
+	letterMappings.put("doubleconsonent", lua->getGlobalString("doubleconsonent"));
+
+	LuaObject organicPrefixesObject = lua->getGlobalObject("organicprefixes");
+	for (int i = 1; i <= organicPrefixesObject.getTableSize(); ++i)
+		organicPrefixes.add(organicPrefixesObject.getStringAt(i));
+
+	organicPrefixesObject.pop();
+
+	LuaObject organicSuffixesObject = lua->getGlobalObject("organicsuffixes");
+	for (int i = 1; i <= organicSuffixesObject.getTableSize(); ++i)
+		organicPrefixes.add(organicSuffixesObject.getStringAt(i));
+
+	organicSuffixesObject.pop();
+
+	LuaObject inorganicPrefixesObject = lua->getGlobalObject("inorganicprefixes");
+	for (int i = 1; i <= inorganicPrefixesObject.getTableSize(); ++i)
+		inorganicPrefixes.add(inorganicPrefixesObject.getStringAt(i));
+
+	inorganicPrefixesObject.pop();
+
+	LuaObject inorganicSuffixesObject = lua->getGlobalObject("inorganicsuffixes");
+	for (int i = 1; i <= inorganicSuffixesObject.getTableSize(); ++i)
+		inorganicSuffixes.add(inorganicSuffixesObject.getStringAt(i));
+
+	inorganicSuffixesObject.pop();
+
+	LuaObject npcFirstNamesObject = lua->getGlobalObject("npcfirstnames");
+	for (int i = 1; i <= npcFirstNamesObject.getTableSize(); ++i)
+		npcFirstNames.add(npcFirstNamesObject.getStringAt(i));
+
+	npcFirstNamesObject.pop();
+
+	LuaObject npcSurnamesObject = lua->getGlobalObject("npcsurnames");
+	for (int i = 1; i <= npcSurnamesObject.getTableSize(); ++i)
+		npcSurnames.add(npcSurnamesObject.getStringAt(i));
+
+	npcSurnamesObject.pop();
+
+	LuaObject stormtrooperPrefixesObject = lua->getGlobalObject("stormtrooperPrefixes");
+	for (int i = 1; i <= stormtrooperPrefixesObject.getTableSize(); ++i)
+		stormtrooperPrefixes.add(stormtrooperPrefixesObject.getStringAt(i));
+
+	stormtrooperPrefixesObject.pop();
+
+	LuaObject scouttrooperPrefixesObject = lua->getGlobalObject("scouttrooperPrefixes");
+	for (int i = 1; i <= scouttrooperPrefixesObject.getTableSize(); ++i)
+		scouttrooperPrefixes.add(scouttrooperPrefixesObject.getStringAt(i));
+
+	scouttrooperPrefixesObject.pop();
+
+	LuaObject darktrooperPrefixesObject = lua->getGlobalObject("darktrooperPrefixes");
+	for (int i = 1; i <= darktrooperPrefixesObject.getTableSize(); ++i)
+		darktrooperPrefixes.add(darktrooperPrefixesObject.getStringAt(i));
+
+	darktrooperPrefixesObject.pop();
+
+	LuaObject swamptrooperPrefixesObject = lua->getGlobalObject("swamptrooperPrefixes");
+	for (int i = 1; i <= swamptrooperPrefixesObject.getTableSize(); ++i)
+		swamptrooperPrefixes.add(swamptrooperPrefixesObject.getStringAt(i));
+
+	swamptrooperPrefixesObject.pop();
+	return true;
+}
+
+void NameManager::loadDefaultConfig() {
 
 
-	LuaObject luaObject = lua->getGlobalObject("nameManagerBothan");
-	bothanData = new NameData();
-	bothanData->readObject(&luaObject);
-	luaObject.pop();
+}
 
-	luaObject = lua->getGlobalObject("nameManagerHuman");
-	humanData = new NameData();
-	humanData->readObject(&luaObject);
-	luaObject.pop();
+void NameManager::fillNames() {
+	File* restrictedFile = new File("conf/restrictednames.lst");
 
-	luaObject = lua->getGlobalObject("nameManagerIthorian");
-	ithorianData = new NameData();
-	ithorianData->readObject(&luaObject);
-	luaObject.pop();
+	try {
+		FileReader restrictedReader(restrictedFile);
 
-	luaObject = lua->getGlobalObject("nameManagerMonCal");
-	monCalData = new NameData();
-	monCalData->readObject(&luaObject);
-	luaObject.pop();
+		info("parsing restricted names list: restrictednames.lst", true);
 
-	luaObject = lua->getGlobalObject("nameManagerRodian");
-	rodianData = new NameData();
-	rodianData->readObject(&luaObject);
-	luaObject.pop();
+		BannedNameSet* setp = NULL;
 
-	luaObject = lua->getGlobalObject("nameManagerSullustan");
-	sullustanData = new NameData();
-	sullustanData->readObject(&luaObject);
-	luaObject.pop();
+		String line;
+		bool isset = false;
 
-	luaObject = lua->getGlobalObject("nameManagerTrandoshan");
-	trandoshanData = new NameData();
-	trandoshanData->readObject(&luaObject);
-	luaObject.pop();
+		while (restrictedReader.readLine(line)) {
+			String name = line.trim().toLowerCase();
 
-	luaObject = lua->getGlobalObject("nameManagerTwilek");
-	twilekData = new NameData();
-	twilekData->readObject(&luaObject);
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("nameManagerWookiee");
-	wookieeData = new NameData();
-	wookieeData->readObject(&luaObject);
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("nameManagerZabrak");
-	zabrakData = new NameData();
-	zabrakData->readObject(&luaObject);
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("nameManagerEnergyResource");
-	energyResourceData = new NameData();
-	energyResourceData->readObject(&luaObject);
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("nameManagerMineralResource");
-	mineralResourceData = new NameData();
-	mineralResourceData->readObject(&luaObject);
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("nameManagerPlainResource");
-	plainResourceData = new NameData();
-	plainResourceData->readObject(&luaObject);
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("nameManagerReactiveGasResource");
-	reactiveGasResourceData = new NameData();
-	reactiveGasResourceData->readObject(&luaObject);
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("stormtrooperPrefixes");
-	for (int i = 1; i <= luaObject.getTableSize(); ++i)
-		stormtrooperPrefixes.add(luaObject.getStringAt(i));
-
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("scouttrooperPrefixes");
-	for (int i = 1; i <= luaObject.getTableSize(); ++i)
-		scouttrooperPrefixes.add(luaObject.getStringAt(i));
-
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("darktrooperPrefixes");
-	for (int i = 1; i <= luaObject.getTableSize(); ++i)
-		darktrooperPrefixes.add(luaObject.getStringAt(i));
-
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("swamptrooperPrefixes");
-	for (int i = 1; i <= luaObject.getTableSize(); ++i)
-		swamptrooperPrefixes.add(luaObject.getStringAt(i));
-
-	luaObject.pop();
-
-	luaObject = lua->getGlobalObject("reservedNames");
-
-	if (luaObject.isValidTable()) {
-		for(int i = 1; i <= luaObject.getTableSize(); ++i) {
-			LuaObject entry = luaObject.getObjectAt(i);
-
-			String regexEntry = entry.getStringAt(1);
-			int reason = entry.getIntAt(2);
-
-			reservedNames.put(regexEntry, reason);
-
-			entry.pop();
+			if ((name.length() >= 2 && name.subString(0, 2).compareTo("--") == 0)
+					|| name == "") {
+				continue; //skip it
+			} else if (name.indexOf("[profane]") != -1) {
+				isset = false;
+				continue;
+			} else if (name.indexOf("[developer]") != -1) {
+				isset = true;
+				setp = developerNames;
+				continue;
+			} else if (name.indexOf("[fiction]") != -1) {
+				isset = true;
+				setp = fictionNames;
+				continue;
+			} else if (name.indexOf("[reserved]") != -1) {
+				isset = true;
+				setp = reservedNames;
+				continue;
+			} else if (isset) {
+				setp->add(name);
+				continue;
+			} else {
+				profaneNames->add(name);
+				continue;
+			}
 		}
+	} catch (FileNotFoundException&e ) {
 	}
 
-	info("Loaded " + String::valueOf(reservedNames.size()) + " reserved name patterns.", true);
-
-	luaObject.pop();
-
-	delete lua;
-	lua = nullptr;
+	delete restrictedFile;
 }
 
-bool NameManager::isProfane(const String& name) const {
-	return validateReservedNames(name, NameManagerResult::DECLINED_PROFANE) != NameManagerResult::ACCEPTED;
-}
 
-bool NameManager::isDeveloper(const String& name) const {
-	return validateReservedNames(name, NameManagerResult::DECLINED_DEVELOPER) != NameManagerResult::ACCEPTED;
-}
+bool NameManager::isProfane(String name) {
+	uint16 i;
 
-bool NameManager::isFiction(const String& name) const {
-	return validateReservedNames(name, NameManagerResult::DECLINED_FICT_RESERVED) != NameManagerResult::ACCEPTED;
-}
+	name = name.toLowerCase();
 
-bool NameManager::isReserved(const String& name) const {
-	return validateReservedNames(name, NameManagerResult::DECLINED_RESERVED) != NameManagerResult::ACCEPTED;
-}
-
-int NameManager::validateReservedNames(const String& name, int resultType) const {
-	for (int i = 0; i < reservedNames.size(); i++) {
-		VectorMapEntry<String, int> entry = reservedNames.elementAt(i);
-
-		std::regex regexCheck(entry.getKey().toCharArray());
-		int reservedReason = entry.getValue();
-
-		if (resultType > 0 && resultType != reservedReason)
-			continue;
-
-		if (std::regex_search(name.toCharArray(), regexCheck)) {
-			//error("Name " + name + " failed check against regex " + entry.getKey() + " , reason: " + reservedReason);
-			return reservedReason;
-		}
+	for (i = 0; i < profaneNames->size(); i++) {
+		if (name.indexOf(profaneNames->get(i)) != -1)
+			return true;
 	}
-	return NameManagerResult::ACCEPTED;
+
+	return false;
 }
 
-int NameManager::validateName(const CreatureObject* obj) const {
-	const StringId* objectName = obj->getObjectName();
+inline bool NameManager::isDeveloper(String name) {
+	name = name.toLowerCase();
+
+	HashSetIterator<String> iter = developerNames->iterator();
+	while (iter.hasNext()) {
+		if (name.indexOf(iter.next()) != -1)
+			return true;
+	}
+
+	return false;
+}
+
+inline bool NameManager::isFiction(String name) {
+	name = name.toLowerCase();
+
+	HashSetIterator<String> iter = fictionNames->iterator();
+	while (iter.hasNext()) {
+		if (name.indexOf(iter.next()) != -1)
+			return true;
+	}
+
+	return false;
+}
+
+inline bool NameManager::isReserved(String name) {
+	name = name.toLowerCase();
+
+	HashSetIterator<String> iter = reservedNames->iterator();
+	while (iter.hasNext()) {
+		if (name.indexOf(iter.next()) != -1)
+			return true;
+	}
+
+	return false;
+}
+
+int NameManager::validateName(CreatureObject* obj) {
+	StringId* objectName = obj->getObjectName();
 	UnicodeString name = obj->getCustomObjectName();
 	int species = obj->getSpecies();
 
 	return validateName(name.toString(), species);
 }
 
-const NameData* NameManager::getSpeciesData(int species) const {
-	switch (species) {
-	case CreatureObject::HUMAN: return humanData;
-	case CreatureObject::RODIAN: return rodianData;
-	case CreatureObject::TRANDOSHAN: return trandoshanData;
-	case CreatureObject::MONCAL: return monCalData;
-	case CreatureObject::WOOKIE: return wookieeData;
-	case CreatureObject::BOTHAN: return bothanData;
-	case CreatureObject::TWILEK: return twilekData;
-	case CreatureObject::ZABRAK: return zabrakData;
-	case CreatureObject::ITHORIAN: return ithorianData;
-	case CreatureObject::SULLUSTAN: return sullustanData;
-	default: return humanData;
-	}
-}
-
-int NameManager::validateName(const String& name, int species) const {
-	auto data = getSpeciesData(species);
-	auto firstNameRules = data->getFirstNameRules();
-	auto lastNameRules = data->getLastNameRules();
-
+int NameManager::validateName(const String& name, int species) {
 	if (name.isEmpty())
 		return NameManagerResult::DECLINED_EMPTY;
 
-	int fullMaxLength = firstNameRules->getMaxChars() + lastNameRules->getMaxChars() + 1;
-
-	if (name.length() > fullMaxLength)
+	if (name.length() > 40)
 		return NameManagerResult::DECLINED_RACE_INAPP;
 
-	String firstName, lastName;
+	String fname, lname;
 
 	//Split the name into first and last
 	int spc = name.indexOf(" ");
 	if (spc != -1) {
-		firstName = name.subString(0, spc);
-		lastName = name.subString(spc + 1, name.length());
+		fname = name.subString(0, spc);
+		lname = name.subString(spc + 1, name.length());
 	} else {
-		firstName = name;
-		lastName = "";
+		fname = name;
+		lname = "";
 	}
 
-	if (firstName.length() < firstNameRules->getMinChars() || firstName.length() > firstNameRules->getMaxChars())
+	if (isProfane(name))
+		return NameManagerResult::DECLINED_PROFANE;
+
+	if (isDeveloper(name))
+		return NameManagerResult::DECLINED_DEVELOPER;
+
+	if (isFiction(name))
+		return NameManagerResult::DECLINED_FICT_RESERVED;
+
+	if (isReserved(name) || isReserved(fname) )
+		return NameManagerResult::DECLINED_RESERVED;
+
+	//Make sure that only valid characters are allowed in the name.
+	if (strspn(fname.toCharArray(), "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'-") != fname.length() ||
+			strspn(lname.toCharArray(), "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'-") != lname.length())
+		return NameManagerResult::DECLINED_SYNTAX;
+
+	if (species == -1)
+		return NameManagerResult::ACCEPTED;
+
+	if (fname.length() < 3 || fname.length() > 15 || lname.length() > 20)
 		return NameManagerResult::DECLINED_RACE_INAPP;
 
-	// This will handle species not allowed surnames (Wookiees) if the rules have min/max set to 0
-	if (lastName != "" && (lastName.length() < lastNameRules->getMinChars() || lastName.length() > lastNameRules->getMaxChars()))
+	//Wookiees are not allowed to have last names.
+	if (!lname.isEmpty() && species == CreatureObject::WOOKIE)
 		return NameManagerResult::DECLINED_RACE_INAPP;
 
-	// Iterates through the name, looking for non alphabetic characters and comparing it to the allowed
-	// special characters in the rules, also counting total characters and comparing to the max
-	int specialCount = 0;
-	for (int i = 0; i < firstName.length(); i++) {
-		String singleChar = firstName.subString(i, i + 1);
-		if (isalpha(firstName.charAt(i)) == 0) {
-			if (!firstNameRules->getSpecialChars().contains(singleChar))
-				return NameManagerResult::DECLINED_RACE_INAPP;
-			else
-				specialCount++;
-		}
-	}
+	//If the name has a hyphen or apostrophe, make sure they are the proper species.
+	if (name.indexOf("'") != -1 || name.indexOf("-") != -1) {
+		//Must be a human, twilek, moncal, or zabrak to have a hyphen or apostrophe.
+		if (species != CreatureObjectImplementation::HUMAN && species != CreatureObjectImplementation::TWILEK && species != CreatureObjectImplementation::MONCAL && species != CreatureObjectImplementation::ZABRAK)
+			return NameManagerResult::DECLINED_RACE_INAPP;
 
-	if (specialCount > firstNameRules->getMaxSpecialChars())
-		return NameManagerResult::DECLINED_RACE_INAPP;
+		//Moncal's aren't allowed to have apostrophes.
+		if (species == CreatureObjectImplementation::MONCAL && name.indexOf("'") != -1)
+			return NameManagerResult::DECLINED_RACE_INAPP;
 
-	if (lastName != "") {
-		specialCount = 0;
-		for (int i = 0; i < lastName.length(); i++) {
-			String singleChar = lastName.subString(i, i + 1);
-			if (isalpha(lastName.charAt(i)) == 0) {
-				if (!lastNameRules->getSpecialChars().contains(singleChar))
-					return NameManagerResult::DECLINED_RACE_INAPP;
-				else
-					specialCount++;
-			}
-		}
+		//Make sure they only have one hyphen and apostrophe in firstname.
+		if (fname.indexOf('\'') != fname.lastIndexOf('\'') || fname.indexOf('-') != fname.lastIndexOf('-'))
+			return NameManagerResult::DECLINED_RACE_INAPP;
 
-		if (specialCount > lastNameRules->getMaxSpecialChars())
+		//Make sure they only have one hyphen and apostrophe in lastname.
+		if (lname.indexOf('\'') != lname.lastIndexOf('\'') || lname.indexOf('-') != lname.lastIndexOf('-'))
 			return NameManagerResult::DECLINED_RACE_INAPP;
 	}
 
-	return validateReservedNames(name);
+	return NameManagerResult::ACCEPTED;
 }
 
-int NameManager::validateGuildName(const String& name, int type) const {
+int NameManager::validateGuildName(const String& name, int type) {
 	if (name.isEmpty())
 		return NameManagerResult::DECLINED_EMPTY;
 
@@ -334,6 +356,18 @@ int NameManager::validateGuildName(const String& name, int type) const {
 
 	if (type == NameManagerType::GUILD_ABBREV && name.length() > 5)
 		return NameManagerResult::DECLINED_GUILD_LENGTH;
+
+	if (isProfane(name))
+		return NameManagerResult::DECLINED_PROFANE;
+
+	if (isDeveloper(name))
+		return NameManagerResult::DECLINED_DEVELOPER;
+
+	if (isFiction(name))
+		return NameManagerResult::DECLINED_FICT_RESERVED;
+
+	if (isReserved(name))
+		return NameManagerResult::DECLINED_RESERVED;
 
 	// Guilds allowed multiple spaces
 	if (strspn(name.toCharArray(), "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'- ") != name.length())
@@ -346,15 +380,27 @@ int NameManager::validateGuildName(const String& name, int type) const {
 	if (name.contains("\\") || name.contains("\n") || name.contains("\r") || name.contains("#"))
 		return NameManagerResult::DECLINED_SYNTAX;
 
-	return validateReservedNames(name);
+	return NameManagerResult::ACCEPTED;
 }
 
-int NameManager::validateCityName(const String& name) const {
+int NameManager::validateCityName(const String& name) {
 	if (name.isEmpty())
 		return NameManagerResult::DECLINED_EMPTY;
 
 	if (name.length() > 40)
 		return NameManagerResult::DECLINED_SYNTAX;
+
+	if (isProfane(name))
+		return NameManagerResult::DECLINED_PROFANE;
+
+	if (isDeveloper(name))
+		return NameManagerResult::DECLINED_DEVELOPER;
+
+	if (isFiction(name))
+		return NameManagerResult::DECLINED_FICT_RESERVED;
+
+	if (isReserved(name))
+		return NameManagerResult::DECLINED_RESERVED;
 
 	// Cities allowed multiple spaces
 	if (strspn(name.toCharArray(), "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'- ") != name.length())
@@ -364,17 +410,29 @@ int NameManager::validateCityName(const String& name) const {
 	if (name.indexOf("  ") != -1)
 		return NameManagerResult::DECLINED_SYNTAX;
 
-	return validateReservedNames(name);
+	return NameManagerResult::ACCEPTED;
 }
 
-int NameManager::validateVendorName(const String& name) const {
+int NameManager::validateVendorName(const String& name) {
 	if (name.isEmpty())
 		return NameManagerResult::DECLINED_EMPTY;
 
 	if (name.length() > 40)
 		return NameManagerResult::DECLINED_SYNTAX;
 
-	// Vendors allowed to have spaces
+	if (isProfane(name))
+		return NameManagerResult::DECLINED_PROFANE;
+
+	if (isDeveloper(name))
+		return NameManagerResult::DECLINED_DEVELOPER;
+
+	if (isFiction(name))
+		return NameManagerResult::DECLINED_FICT_RESERVED;
+
+	if (isReserved(name))
+		return NameManagerResult::DECLINED_RESERVED;
+
+	// Vendors allowed multiple spaces
 	if (strspn(name.toCharArray(), "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'- ") != name.length())
 		return NameManagerResult::DECLINED_SYNTAX;
 
@@ -382,64 +440,125 @@ int NameManager::validateVendorName(const String& name) const {
 	if (name.indexOf("  ") != -1)
 		return NameManagerResult::DECLINED_SYNTAX;
 
-	return validateReservedNames(name);
+	return NameManagerResult::ACCEPTED;
 }
 
-int NameManager::validateChatRoomName(const String& name) const {
+int NameManager::validateFirstName(const String& name, int species) {
 	if (name.isEmpty())
 		return NameManagerResult::DECLINED_EMPTY;
+
+	if (name.length() < 3 || name.length() > 15)
+		return NameManagerResult::DECLINED_RACE_INAPP;
 
 	if (isProfane(name))
 		return NameManagerResult::DECLINED_PROFANE;
 
-	//Chat rooms can only have letters and numbers in the name, no special characters or spaces.
-	if (strspn(name.toCharArray(), "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") != name.length())
+	if (isDeveloper(name))
+		return NameManagerResult::DECLINED_DEVELOPER;
+
+	if (isFiction(name))
+		return NameManagerResult::DECLINED_FICT_RESERVED;
+
+	if (isReserved(name))
+		return NameManagerResult::DECLINED_RESERVED;
+
+	//Make sure that only valid characters are allowed in the name.
+	if (strspn(name.toCharArray(), "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'-") != name.length())
 		return NameManagerResult::DECLINED_SYNTAX;
 
-	uint32 hash = name.hashCode();
+	//If the name has a hyphen or apostrophe, make sure they are the proper species.
+	if (name.indexOf("'") != -1 || name.indexOf("-") != -1) {
+		//Must be a human, twilek, moncal, or zabrak to have a hyphen or apostrophe.
+		if (species != CreatureObjectImplementation::HUMAN && species != CreatureObjectImplementation::TWILEK && species != CreatureObjectImplementation::MONCAL && species != CreatureObjectImplementation::ZABRAK)
+			return NameManagerResult::DECLINED_RACE_INAPP;
 
-	//The following are special names in the game client and should not be used by players.
-	if (hash == STRING_HASHCODE("Planet") || hash == STRING_HASHCODE("Quest"))
-		return NameManagerResult::DECLINED_RESERVED;
+		//Moncal's aren't allowed to have apostrophes.
+		if (species == CreatureObjectImplementation::MONCAL && name.indexOf("'") != -1)
+			return NameManagerResult::DECLINED_RACE_INAPP;
 
-	if (hash == STRING_HASHCODE("system") || hash == STRING_HASHCODE("named"))
-		return NameManagerResult::DECLINED_RESERVED;
-
-	if (hash == STRING_HASHCODE("GuildChat") || hash == STRING_HASHCODE("GroupChat"))
-		return NameManagerResult::DECLINED_RESERVED;
-
-	if (hash == STRING_HASHCODE("Auction") || hash == STRING_HASHCODE("Combat"))
-		return NameManagerResult::DECLINED_RESERVED;
+		//Make sure they only have one hyphen and apostrophe in firstname.
+		if (name.indexOf('\'') != name.lastIndexOf('\'') || name.indexOf('-') != name.lastIndexOf('-'))
+			return NameManagerResult::DECLINED_RACE_INAPP;
+	}
 
 	return NameManagerResult::ACCEPTED;
 }
 
-const String NameManager::makeCreatureName(int type, int species) const {
-	String name;
-	auto data = getSpeciesData(species);
+int NameManager::validateLastName(const String& name, int species) {
+	if (name.isEmpty())
+		return NameManagerResult::ACCEPTED;
 
-	// Covers all Imperial Trooper types
-	if (type >= NameManagerType::STORMTROOPER && type <= NameManagerType::SWAMPTROOPER) {
+	//Wookiees are not allowed to have last names.
+	if (species == CreatureObject::WOOKIE)
+		return NameManagerResult::DECLINED_RACE_INAPP;
+
+	if (name.length() > 20)
+		return NameManagerResult::DECLINED_RACE_INAPP;
+
+	if (isProfane(name))
+		return NameManagerResult::DECLINED_PROFANE;
+
+	if (isDeveloper(name))
+		return NameManagerResult::DECLINED_DEVELOPER;
+
+	if (isFiction(name))
+		return NameManagerResult::DECLINED_FICT_RESERVED;
+
+	if (isReserved(name))
+		return NameManagerResult::DECLINED_RESERVED;
+
+	//Make sure that only valid characters are allowed in the name.
+	if (strspn(name.toCharArray(), "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'-") != name.length())
+		return NameManagerResult::DECLINED_SYNTAX;
+
+	//If the name has a hyphen or apostrophe, make sure they are the proper species.
+	if (name.indexOf("'") != -1 || name.indexOf("-") != -1) {
+		//Must be a human, twilek, moncal, or zabrak to have a hyphen or apostrophe.
+		if (species != CreatureObjectImplementation::HUMAN && species != CreatureObjectImplementation::TWILEK && species != CreatureObjectImplementation::MONCAL && species != CreatureObjectImplementation::ZABRAK)
+			return NameManagerResult::DECLINED_RACE_INAPP;
+
+		//Moncal's aren't allowed to have apostrophes.
+		if (species == CreatureObjectImplementation::MONCAL && name.indexOf("'") != -1)
+			return NameManagerResult::DECLINED_RACE_INAPP;
+
+		//Make sure they only have one hyphen and apostrophe in lastname.
+		if (name.indexOf('\'') != name.lastIndexOf('\'') || name.indexOf('-') != name.lastIndexOf('-'))
+			return NameManagerResult::DECLINED_RACE_INAPP;
+	}
+
+	return NameManagerResult::ACCEPTED;
+}
+
+const String NameManager::makeCreatureName(int type) {
+	String name;
+
+	if (type == NameManagerType::STORMTROOPER || type == NameManagerType::STORMTROOPER_TAG
+			|| type == NameManagerType::SCOUTTROOPER || type == NameManagerType::SCOUTTROOPER_TAG
+				||type == NameManagerType::DARKTROOPER || type == NameManagerType::DARKTROOPER_TAG
+					|| type == NameManagerType::SWAMPTROOPER || type == NameManagerType::SWAMPTROOPER_TAG) {
 		name = makeImperialTrooperName(type);
-	} else if (type >= NameManagerType::R2 && type <= NameManagerType::DROID_RA7) {
-		name = makeDroidName(type);
 	} else {
-		name = generateRandomName(data);
+		name = makeName(3 + System::random(6));
+
+		if (type == NameManagerType::GENERIC || type == NameManagerType::GENERIC_TAG) {
+			name += " ";
+			name += makeName(3 + System::random(6));
+		}
 	}
 
 	return name;
 }
 
-String NameManager::makeImperialTrooperName(int type) const {
+String NameManager::makeImperialTrooperName(int type) {
 	String name;
 
-	if (type == NameManagerType::STORMTROOPER)
+	if (type == NameManagerType::STORMTROOPER || type == NameManagerType::STORMTROOPER_TAG)
 		name += stormtrooperPrefixes.get(System::random(stormtrooperPrefixes.size() - 1));
-	else if (type == NameManagerType::SCOUTTROOPER)
+	else if (type == NameManagerType::SCOUTTROOPER || type == NameManagerType::SCOUTTROOPER_TAG)
 		name += scouttrooperPrefixes.get(System::random(scouttrooperPrefixes.size() - 1));
-	else if (type == NameManagerType::DARKTROOPER)
+	else if (type == NameManagerType::DARKTROOPER || type == NameManagerType::DARKTROOPER_TAG)
 		name += darktrooperPrefixes.get(System::random(darktrooperPrefixes.size() - 1));
-	else if (type == NameManagerType::SWAMPTROOPER)
+	else if (type == NameManagerType::SWAMPTROOPER || type == NameManagerType::SWAMPTROOPER_TAG)
 		name += swamptrooperPrefixes.get(System::random(swamptrooperPrefixes.size() - 1));
 
 	name += "-";
@@ -448,312 +567,147 @@ String NameManager::makeImperialTrooperName(int type) const {
 	return name;
 }
 
-String NameManager::makeDroidName(int type) const {
-	const static char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	String name = "";
+String NameManager::makeName(int nameLength) {
+	String name;
 
-	if (type >= NameManagerType::R2 && type <= NameManagerType::R5) {
-		name = "R" + String::valueOf(type) + "-";
-		name += alphabet[System::random(25)];
-		name += String::valueOf(System::random(9));
-	} else if (type == NameManagerType::DROID_3P0) {
-		name += alphabet[System::random(25)];
-		name += String::valueOf(System::random(9)) + "-P0";
-	} else if (type == NameManagerType::DROID_EG6) {
-		name = "E";
-		name += alphabet[System::random(25)];
-		name += "-" + String::valueOf(System::random(9));
-	} else if (type == NameManagerType::DROID_WED) {
-		name = "WED-";
-		name += alphabet[System::random(25)];
-		name += String::valueOf(System::random(9));
-	} else if (type == NameManagerType::DROID_LE) {
-		name = "LE-";
-		name += alphabet[System::random(25)];
-		name += alphabet[System::random(25)];
-		name += String::valueOf(System::random(9));
-	} else if (type == NameManagerType::DROID_RA7) {
-		name = "RA7-";
-		name += alphabet[System::random(25)];
-		name += String::valueOf(System::random(9));
-	}
+	do {
+		name = "";
+
+		/// Get first 2 letters
+		name += chooseNextLetter(' ', ' ');
+		name += chooseNextLetter(name[0], ' ');
+
+		assert(name.length() != 0);
+
+		while (name.length() < nameLength)
+				name += chooseNextLetter(name[name.length() - 1], name[name.length() - 2]);
+
+		name[0] = Character::toUpperCase(name[0]);
+
+	} while (validateName(name, -1) != NameManagerResult::ACCEPTED);
 
 	return name;
 }
 
-void NameManager::test() const {
+const String NameManager::makeResourceName(bool isOrganic) {
+	int nameLength = 4 + System::random(6);
+	String name;
+
+	do {
+		name = "";
+
+		if (nameLength > 5 && System::random(2) == 1) {
+			addPrefix(name, isOrganic);
+		}
+
+		if(name.length() < 2) {
+			name += chooseNextLetter(' ', ' ');
+			name += chooseNextLetter(name[0], ' ');
+		}
+
+		assert(name.length() != 0);
+
+		while (name.length() < nameLength)
+				name += chooseNextLetter(name[name.length() - 1], name[name.length() - 2]);
+
+		if (!isVowel(name[name.length() - 1]) && name[name.length() - 1] != 'q' && System::random(1) == 1 )
+			addSuffix(name, isOrganic);
+
+		name[0] = Character::toUpperCase(name[0]);
+
+	} while (validateName(name, -1) != NameManagerResult::ACCEPTED);
+
+	return name;
+}
+
+char NameManager::chooseNextLetter(const char lastLetter, const char letterBeforeLast) {
+
+	if (letterBeforeLast == ' ' && lastLetter == ' ')
+		return 97 + System::random(25);
+
+	StringBuffer last;
+	last << Character::toLowerCase(lastLetter);
+
+	String inclusion = "abcdefghijklmnopqrstuvwxyz";
+
+	if (letterBeforeLast != ' ' && (!isVowel(lastLetter) && !isVowel(letterBeforeLast))) {
+
+		inclusion = letterMappings.get("doubleconsonent");
+
+	} else if ((letterBeforeLast != ' ' && isVowel(lastLetter) && isVowel(letterBeforeLast))) {
+
+		inclusion = letterMappings.get("doublevowel");
+
+	} else if ((letterBeforeLast != ' ' && lastLetter == 'u' && letterBeforeLast == 'q')) {
+
+		inclusion = letterMappings.get("qu");
+
+	} else if(letterMappings.contains(last.toString())) {
+
+		inclusion = letterMappings.get(last.toString());
+	}
+
+	return chooseLetterInclusive(inclusion);
+}
+
+inline bool NameManager::isVowel(const char inChar) {
+	if (inChar == 'a' || inChar == 'e' || inChar == 'i' || inChar == 'o'
+		|| inChar == 'u' || inChar == 'y')
+		return true;
+	else
+		return false;
+}
+
+char NameManager::chooseLetterInclusive(String include) {
+
+	return include.charAt(System::random(include.length() - 1));
+}
+
+inline void NameManager::addPrefix(String& name, bool isOrganic) {
+
+	if(isOrganic && organicPrefixes.size() > 0)
+		name += organicPrefixes.get(System::random(organicPrefixes.size() - 1));
+
+	if(!isOrganic && inorganicPrefixes.size() > 0)
+		name += inorganicPrefixes.get(System::random(inorganicPrefixes.size() - 1));
+}
+
+inline void NameManager::addSuffix(String& name, bool isOrganic) {
+
+	if(isOrganic && organicSuffixes.size() > 0)
+		name += organicSuffixes.get(System::random(organicSuffixes.size() - 1));
+
+	if(!isOrganic && inorganicSuffixes.size() > 0)
+		name += inorganicSuffixes.get(System::random(inorganicSuffixes.size() - 1));
+
+}
+
+void NameManager::test() {
 	uint64 start = Time::currentNanoTime();
 
 	int iterations = 1000000;
 
 	for(int i = 0;i < iterations; ++i)
+		//System::out << makeResourceName(false) << endl;
+		makeResourceName(false);
+
+	for(int i = 0;i < iterations; ++i)
+		//System::out << makeResourceName(true) << endl;
+		makeResourceName(true);
+
+	for(int i = 0;i < iterations; ++i)
 		//System::out << makeCreatureName(true) << endl;
-		makeCreatureName(1);
+		makeCreatureName(true);
+
+	for(int i = 0;i < iterations; ++i)
+		//System::out << makeCreatureName(false) << endl;
+		makeCreatureName(false);
 
 	uint64 end = Time::currentNanoTime();
 
 	float nano = (end - start);
 	float milli = nano * .000001;
 	float seconds = milli / 1000;
-	System::out << "Old name generator:" << endl;
 	System::out << "Average: " << nano / iterations  << " nanoseconds / " << milli / iterations << " milliseconds" << seconds / iterations  << " seconds" << endl;
 	System::out << "Total: " << nano << " nanoseconds / " << milli << " milliseconds" << seconds << " seconds" << endl;
-
-	start = Time::currentNanoTime();
-
-	for(int i = 0;i < iterations; ++i)
-		generateResourceName("plain_resource");
-
-	end = Time::currentNanoTime();
-
-	nano = (end - start);
-	milli = nano * .000001;
-	seconds = milli / 1000;
-	System::out << "New name generator:" << endl;
-	System::out << "Average: " << nano / iterations  << " nanoseconds / " << milli / iterations << " milliseconds" << seconds / iterations  << " seconds" << endl;
-	System::out << "Total: " << nano << " nanoseconds / " << milli << " milliseconds" << seconds << " seconds" << endl;
-}
-
-String NameManager::generateResourceName(const String& randomNameClass) const {
-	const NameData* data;
-
-	if (randomNameClass == "energy_resource")
-		data = energyResourceData;
-	else if (randomNameClass == "mineral_resource")
-		data = mineralResourceData;
-	else if (randomNameClass == "reactive_gas_resource")
-		data = reactiveGasResourceData;
-	else
-		data = plainResourceData;
-
-	return generateRandomName(data);
-}
-
-String NameManager::generateRandomName(const NameData* nameData) const {
-	String result = "";
-	auto lastNameRules = nameData->getLastNameRules();
-
-	result += generateSingleName(nameData, nameData->getFirstNameRules());
-
-	int lastNameChance = lastNameRules->getNameChance();
-
-	if (System::random(100) < lastNameChance)
-		result = result + " " + generateSingleName(nameData, lastNameRules);
-
-	return capitalizeName(result);
-}
-
-String NameManager::generateUniqueName(const NameData* nameData, const NameRules* rules) const {
-	String pattern = nameData->getRandomUniquePattern();
-	String result = "";
-	Vector<String> usedRoots;
-
-	for (int i = 0; i < pattern.length(); i++) {
-		String patType = pattern.subString(i, i + 1);
-
-		if (patType == "*") {
-			result = appendSyllable(result, generateRandomizedName(nameData, rules), nameData);
-		} else {
-			for (;;) {
-				String root = "";
-				String unique = nameData->getRandomUnique(patType, root);
-
-				if (root != "" && usedRoots.contains(root))
-					continue;
-
-				result += unique;
-
-				if (root != "")
-					usedRoots.add(root);
-
-				break;
-			}
-		}
-	}
-
-	return result;
-}
-
-String NameManager::capitalizeName(const String& name) const {
-	String result = "";
-	bool capNext = true;
-	for (int i = 0; i < name.length(); ++i) {
-		if (capNext)
-			result += name.subString(i, i + 1).toUpperCase();
-		else
-			result += name.subString(i, i + 1);
-
-		if (name.subString(i, i + 1) == " ")
-			capNext = true;
-		else if (name.subString(i, i + 1) == "'" || name.subString(i, i + 1) == "-")
-			// Letter after a ' or - is not always capitalized
-			capNext = System::random(100) > 50;
-		else
-			capNext = false;
-	}
-
-	return result;
-}
-
-String NameManager::generateSingleName(const NameData* nameData, const NameRules* rules) const {
-	if (System::random(100) < rules->getUniqueChance())
-		return generateUniqueName(nameData, rules);
-	else
-		return generateRandomizedName(nameData, rules);
-}
-
-String NameManager::generateRandomizedName(const NameData* nameData, const NameRules* rules) const {
-	int syllables = rules->getMinSyllables();
-
-	for (;;) {
-		while (syllables < rules->getMaxSyllables()) {
-			float syllableChance = 0.6f - (syllables / (rules->getMaxSyllables() * 2.0f));
-			if (System::random(100) > syllableChance * 100)
-				break;
-
-			++syllables;
-		}
-
-		bool nextSyllableIsFirst = true;
-		String result = "";
-		int specialCharCount = 0;
-
-		Vector<String> selectedSpecialSyllables;
-
-		for (int i = 0; i < syllables; ++i) {
-			String oldResult = result;
-			bool firstSyllable = nextSyllableIsFirst;
-			nextSyllableIsFirst = false;
-
-			bool finalSyllable = (i == (syllables - 1));
-			bool appendSpecial = false;
-
-			if (!finalSyllable) {
-				if (specialCharCount < rules->getMaxSpecialChars() && System::random(100) < rules->getSpecialCharChance()) {
-					appendSpecial = true;
-					finalSyllable = true;
-					nextSyllableIsFirst = true;
-				}
-			}
-
-			int specialSyllableChance = rules->getChanceMiddleSpecial();
-
-			if (firstSyllable)
-				specialSyllableChance = rules->getChanceBeginsSpecial();
-			else if (finalSyllable)
-				specialSyllableChance = rules->getChanceEndsSpecial();
-
-			if (System::random(100) < specialSyllableChance && selectedSpecialSyllables.size() < rules->getMaxSpecialSyllables()) {
-				for (;;) {
-					String specialSyllable = nameData->getRandomSpecialSyllable();
-					if (selectedSpecialSyllables.contains(specialSyllable))
-						continue;
-
-					result = appendSyllable(result, specialSyllable, nameData);
-					selectedSpecialSyllables.add(specialSyllable);
-					break;
-				}
-			} else {
-				int syllableSelect = System::random(100);
-				String syllable = "";
-
-				if (syllableSelect < 40) {
-					if (firstSyllable) {
-						syllable += nameData->getRandomBeginningConsonant();
-					} else {
-						syllable += nameData->getRandomMiddleConsonant();
-					}
-					syllable += nameData->getRandomVowel();
-				} else if (syllableSelect < 80) {
-					if (finalSyllable) {
-						syllable += nameData->getRandomEndingConsonant();
-					} else {
-						syllable += nameData->getRandomMiddleConsonant();
-					}
-					syllable += nameData->getRandomVowel();
-				} else {
-					syllable += nameData->getRandomVowel();
-				}
-
-				result = appendSyllable(result, syllable, nameData);
-			}
-
-			if (result == oldResult)
-				--i;
-
-			if (appendSpecial && result != "") {
-				String randSpecial = rules->getRandomSpecialChar();
-				result = appendSyllable(result, randSpecial, nameData);
-				++specialCharCount;
-			}
-		}
-
-		if (result.length() < rules->getMinChars())
-			continue;
-		else if (result.length() > rules->getMaxChars())
-			continue;
-
-		return result;
-	}
-}
-
-String NameManager::appendSyllable(const String& left, const String& right, const NameData* data) const {
-	if (left == "")
-		return right;
-
-	int leftLen = left.length();
-	int leftFragType = NameManagerType::FRAG_MIXED;
-	int i = leftLen;
-	String leftFragment = "";
-
-	while (i > 0) {
-		--i;
-		String leftFrag = left.subString(i, leftLen);
-		int fragType = getFragmentType(leftFrag, data);
-
-		if (fragType == NameManagerType::FRAG_MIXED || fragType == NameManagerType::FRAG_SPECIAL)
-			break;
-
-		leftFragment = leftFrag;
-		leftFragType = fragType;
-	}
-
-	int rightFragType = NameManagerType::FRAG_MIXED;
-	String rightFragment = "";
-
-	int r = 0;
-
-	while (r < right.length()) {
-		++r;
-		String rightFrag = right.subString(0, r);
-		int fragType = getFragmentType(rightFrag, data);
-
-		if (fragType == NameManagerType::FRAG_MIXED || fragType == NameManagerType::FRAG_SPECIAL)
-			break;
-
-		rightFragment = rightFrag;
-		rightFragType = fragType;
-	}
-
-	if (rightFragType != leftFragType)
-		return left + right;
-
-	if (leftFragment == rightFragment)
-		return left;
-
-	if (leftFragType == NameManagerType::FRAG_CONSONANT)
-		return left + data->getRandomVowel() + right;
-	else
-		return left + data->getRandomMiddleConsonant() + right;
-}
-
-int NameManager::getFragmentType(const String& frag, const NameData* data) const {
-	if (data->beginningConsonantContains(frag) || data->middeConsonantContains(frag)|| data->endingConsonantContains(frag))
-		return NameManagerType::FRAG_CONSONANT;
-	else if (data->vowelsContains(frag))
-		return NameManagerType::FRAG_VOWEL;
-	else if (data->specialSyllablesContains(frag))
-		return NameManagerType::FRAG_SPECIAL;
-
-	return NameManagerType::FRAG_MIXED;
 }

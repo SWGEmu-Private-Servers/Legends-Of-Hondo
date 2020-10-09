@@ -18,9 +18,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		uint64 playerID = player->getObjectID();
 
 		ManagedReference<GuildManager*> guildManager = server->getGuildManager();
@@ -49,9 +47,9 @@ public:
 
 		String guildAbbrev = args->get(0).toString();
 
-		ManagedReference<SceneObject*> obj = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = suiBox->getUsingObject();
 
-		if (obj == nullptr || !obj->isTerminal()) {
+		if (obj == NULL || !obj->isTerminal()) {
 			guildManager->removePendingGuild(playerID);
 			return;
 		}

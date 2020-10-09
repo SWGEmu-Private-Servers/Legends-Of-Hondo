@@ -5,6 +5,7 @@
 #ifndef GMCREATESPECIFICRESOURCECOMMAND_H_
 #define GMCREATESPECIFICRESOURCECOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/managers/resource/ResourceManager.h"
 
 class GmCreateSpecificResourceCommand : public QueueCommand {
@@ -23,11 +24,16 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
-		if(!creature->isPlayerCreature())
+		StringTokenizer tokenizer(arguments.toString());
+
+		if(!tokenizer.hasMoreTokens() || !creature->isPlayerCreature())
 			return INVALIDPARAMETERS;
 
+		String restype;
+		tokenizer.getStringToken(restype);
+
 		ManagedReference<ResourceManager* > resourceManager = server->getZoneServer()->getResourceManager();
-		resourceManager->createResourceSpawn(creature, arguments);
+		resourceManager->createResourceSpawn(creature, restype);
 
 		return SUCCESS;
 	}

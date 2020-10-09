@@ -5,6 +5,7 @@
 #ifndef TENDDAMAGECOMMAND_H_
 #define TENDDAMAGECOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "TendCommand.h"
 
 class TendDamageCommand : public TendCommand {
@@ -14,8 +15,8 @@ public:
 			: TendCommand(name, server) {
 		effectName = "clienteffect/healing_healdamage.cef";
 
-		mindCost = 200;
-		mindWoundCost = 5;
+		mindCost = 40;
+		mindWoundCost = 2;
 
 		tendDamage = true;
 

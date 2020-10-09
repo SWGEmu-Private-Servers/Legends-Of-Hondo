@@ -18,9 +18,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox() || cancelPressed)
 			return;
 
@@ -38,12 +36,12 @@ public:
 
 		ManagedReference<GuildManager*> guildManager = server->getGuildManager();
 
-		if (guildManager == nullptr)
+		if (guildManager == NULL)
 			return;
 
-		ManagedReference<SceneObject*> obj = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = suiBox->getUsingObject();
 
-		if (obj == nullptr || !obj->isTerminal())
+		if (obj == NULL || !obj->isTerminal())
 			return;
 
 		Terminal* terminal = cast<Terminal*>( obj.get());
@@ -53,24 +51,24 @@ public:
 
 		GuildTerminal* guildTerminal = cast<GuildTerminal*>( terminal);
 
-		ManagedReference<GuildObject*> guild = player->getGuildObject().get();
+		ManagedReference<GuildObject*> guild = player->getGuildObject();
 
-		if (guild == nullptr)
+		if (guild == NULL)
 			return;
 
 		ManagedReference<SceneObject*> playObj = server->getObject(memberID);
 
-		if (playObj == nullptr || !playObj->isPlayerCreature())
+		if (playObj == NULL || !playObj->isPlayerCreature())
 			return;
 
 		CreatureObject* target = cast<CreatureObject*>( playObj.get());
 
 		switch (index) {
-		case 0: //Set Title
-			guildManager->sendGuildSetTitleTo(player, target);
-			break;
-		case 1: //Kick
+		case 0: //Kick
 			guildManager->sendGuildKickPromptTo(player, target);
+			break;
+		case 1: //Set Title
+			guildManager->sendGuildSetTitleTo(player, target);
 			break;
 		case 2: //Change Permissions
 			guildManager->sendMemberPermissionsTo(player, memberID, guildTerminal);

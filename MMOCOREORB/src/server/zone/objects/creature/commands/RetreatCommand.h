@@ -5,6 +5,7 @@
 #ifndef RETREATCOMMAND_H_
 #define RETREATCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "SquadLeaderCommand.h"
 
 class RetreatCommand : public SquadLeaderCommand {
@@ -20,9 +21,9 @@ public:
 			return false;
 		}
 
-		Zone* zone = creature->getZone();
+		Zone* zone = creature->getZone();		
 
-		if (zone == nullptr) {
+		if (creature->getZone() == NULL) {
 			return false;
 		}
 
@@ -60,16 +61,7 @@ public:
 		if (!creature->isPlayerCreature())
 			return GENERALERROR;
 
-		ManagedReference<CreatureObject*> player = cast<CreatureObject*>(creature);
-
-		if (player == nullptr)
-			return GENERALERROR;
-
-		ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
-
-		if (ghost == nullptr)
-			return GENERALERROR;
-
+		ManagedReference<CreatureObject*> player = creature;
 		ManagedReference<GroupObject*> group = player->getGroup();
 
 		if (!checkGroupLeader(player, group))
@@ -85,25 +77,27 @@ public:
 			return GENERALERROR;
 
 		for (int i = 1; i < group->getGroupSize(); ++i) {
-			ManagedReference<CreatureObject*> member = group->getGroupMember(i);
+			ManagedReference<SceneObject*> member = group->getGroupMember(i);
 
-			if (member == nullptr || !member->isPlayerCreature())
+			if (member == NULL || !member->isPlayerCreature() || member->getZone() != creature->getZone())
+				continue;
+			
+			ManagedReference<CreatureObject*> memberPlayer = cast<CreatureObject*>( member.get());
+
+			if (!isValidGroupAbilityTarget(creature, memberPlayer, false))
 				continue;
 
-			if (!isValidGroupAbilityTarget(creature, member, false))
-				continue;
+			Locker clocker(memberPlayer, player);
 
-			Locker clocker(member, player);
+			sendCombatSpam(memberPlayer);
+			doRetreat(memberPlayer);
 
-			sendCombatSpam(member);
-			doRetreat(member);
-
-			checkForTef(player, member);
+			checkForTef(player, memberPlayer);
 		}
 
-		if (!ghost->getCommandMessageString(STRING_HASHCODE("retreat")).isEmpty() && creature->checkCooldownRecovery("command_message")) {
-			UnicodeString shout(ghost->getCommandMessageString(STRING_HASHCODE("retreat")));
- 	 	 	server->getChatManager()->broadcastChatMessage(player, shout, 0, 80, player->getMoodID(), 0, ghost->getLanguageID());
+		if (player->isPlayerCreature() && player->getPlayerObject()->getCommandMessageString(STRING_HASHCODE("retreat")).isEmpty()==false && creature->checkCooldownRecovery("command_message")) {
+			UnicodeString shout(player->getPlayerObject()->getCommandMessageString(STRING_HASHCODE("retreat")));
+ 	 	 	server->getChatManager()->broadcastMessage(player, shout, 0, 0, 80);
  	 	 	creature->updateCooldownTimer("command_message", 30 * 1000);
 		}
 
@@ -112,7 +106,7 @@ public:
 
 
 	void doRetreat(CreatureObject* player) const {
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
 		if (!checkRetreat(player))
@@ -140,8 +134,8 @@ public:
 
 		buff->setSpeedMultiplierMod(1.822f);
 		buff->setAccelerationMultiplierMod(1.822f);
-		buff->setStartMessage(startStringId);
-		buff->setEndMessage(endStringId);
+		buff->setStartMessage(startStringId);;
+		buff->setEndMessage(endStringId);		
 
 		player->addBuff(buff);
 

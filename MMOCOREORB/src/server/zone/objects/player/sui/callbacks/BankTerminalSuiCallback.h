@@ -15,10 +15,8 @@ public:
 	BankTerminalSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 	}
 
-	void run(CreatureObject* player, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
-		if (!sui->isBankTransferBox() || player == nullptr || cancelPressed) {
+	void run(CreatureObject* player, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
+		if (!sui->isBankTransferBox() || player == NULL || cancelPressed) {
 			return;
 		}
 
@@ -28,14 +26,11 @@ public:
 		int cash = Integer::valueOf(args->get(0).toString());
 		int bank = Integer::valueOf(args->get(1).toString());
 
-		if (cash < 0 || bank < 0)
-			return;
-
 		SuiBankTransferBox* suiBank = cast<SuiBankTransferBox*>( sui);
 
 		ManagedReference<SceneObject*> bankObject = suiBank->getBank();
 
-		if (bankObject == nullptr)
+		if (bankObject == NULL)
 			return;
 
 		if (!player->isInRange(bankObject, 8)){
@@ -47,7 +42,13 @@ public:
 			return;
 		}
 
-		player->transferCredits(cash, bank);
+		uint32 currentCash = player->getCashCredits();
+		uint32 currentBank = player->getBankCredits();
+
+		if ((currentCash + currentBank) == ((uint32) cash + (uint32) bank)) {
+			player->setCashCredits(cash);
+			player->setBankCredits(bank);
+		}
 
 		player->sendSystemMessage("@base_player:bank_success");
 	}

@@ -25,9 +25,7 @@ public:
 		SuiCallback(serv), numPalette(palette), customizationKit(kitTano) {
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!sui->isListBox() || cancelPressed)
 			return;
 
@@ -35,12 +33,12 @@ public:
 
 		if(!creature->isPlayerCreature())
 			return;
-		ManagedReference<SceneObject*> obj = sui->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = sui->getUsingObject();
 
-		if(obj == nullptr)
+		if(obj == NULL)
 			return;
 
-		if( customizationKit == nullptr )
+		if( customizationKit == NULL )
 			return;
 
 		ManagedReference<TangibleObject*> target = cast<TangibleObject*>(obj.get());
@@ -52,8 +50,8 @@ public:
 			if(index < 0 || index > 3)
 				return;
 
-			if(server != nullptr) {
-				if (target == nullptr || !target->isVehicleObject()) {
+			if(server != NULL) {
+				if (target == NULL || !target->isVehicleObject()) {
 					creature->sendSystemMessage("You can only use this tool to customize vehicle");
 					return;
 				}

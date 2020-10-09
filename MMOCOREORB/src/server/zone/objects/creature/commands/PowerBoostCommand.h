@@ -5,7 +5,10 @@
 #ifndef POWERBOOSTCOMMAND_H_
 #define POWERBOOSTCOMMAND_H_
 
-#include "templates/params/creature/CreatureAttribute.h"
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/managers/player/PlayerManager.h"
+#include "server/zone/objects/creature/CreatureAttribute.h"
+
 #include "server/zone/objects/creature/buffs/PowerBoostBuff.h"
 
 class PowerBoostCommand : public QueueCommand {
@@ -30,14 +33,6 @@ public:
 		// Replaced INVALIDLOCOMOTION check to return message if user is not meditating.
 		if(!creature->isMeditating()) {
 			creature->sendSystemMessage("@teraskasi:powerboost_fail"); // You must be meditating to perform that command.
-			return GENERALERROR;
-
-		}
-		// check if user is FORCE meditating as Jedi instead of just regular TK meditate.
-		Reference<ForceMeditateTask*> medTask = creature->getPendingTask("forcemeditate").castTo<ForceMeditateTask*>();
-
-		if (medTask != nullptr) {
-			creature->sendSystemMessage("@error_message:wrong_state"); // You cannot complete that action while in your current state.
 			return GENERALERROR;
 		}
 

@@ -8,210 +8,60 @@
 #include "TurretDataComponent.h"
 #include "server/zone/objects/installation/InstallationObject.h"
 #include "server/zone/packets/scene/AttributeListMessage.h"
-#include "server/zone/managers/gcw/GCWManager.h"
 #include "server/zone/objects/installation/components/TurretFireTask.h"
-#include "server/zone/Zone.h"
 
 void TurretDataComponent::initializeTransientMembers() {
-	ManagedReference<SceneObject*> turret = getParent();
+	if(getParent() != NULL){
+		templateData = dynamic_cast<SharedInstallationObjectTemplate*>(getParent()->getObjectTemplate());
 
-	if (turret == nullptr) {
-		return;
+		SceneObject* sceneObject = getParent()->getSlottedObject("hold_r");
+
+		if(sceneObject == NULL){
+			return;
+		}
+
+		WeaponObject* weapon = cast<WeaponObject*>(sceneObject);
+
+		if(weapon != NULL){
+			attackSpeed = weapon->getAttackSpeed();
+			maxrange = weapon->getMaxRange();
+		}
 	}
-
-	templateData = dynamic_cast<SharedInstallationObjectTemplate*>(turret->getObjectTemplate());
-
-	SceneObject* sceneObject = turret->getSlottedObject("hold_r");
-
-	if (sceneObject == nullptr) {
-		return;
-	}
-
-	WeaponObject* weapon = cast<WeaponObject*>(sceneObject);
-
-	setWeapon(weapon);
 }
 
-void TurretDataComponent::setWeapon(WeaponObject* weapon) {
-	if (weapon != nullptr) {
+void TurretDataComponent::rescheduleFireTask(float secondsToWait, bool manual){
+	if(getParent() == NULL)
+		return;
+
+	CreatureObject* attacker = getController();
+	CreatureObject* target = getTarget();
+
+	//Logger::Logger tlog("reschedule");
+	if(target != NULL){
+
+		Reference<TurretFireTask*> fireTask = new TurretFireTask(cast<TangibleObject*>(getParent()), getTarget(),manual);
+		this->setFireTask(fireTask);
+		getFireTask()->schedule(secondsToWait * 1000);
+
+	} else {
+		//tlog.info("target is null",true);
+		setController(NULL);
+		setFireTask(NULL);
+		setTarget(NULL);
+	}
+
+}
+
+void TurretDataComponent::setWeapon(WeaponObject* weapon){
+	if(weapon != NULL){
 		attackSpeed = weapon->getAttackSpeed();
-		maxRange = weapon->getMaxRange();
+		maxrange = weapon->getMaxRange();
 	}
 }
 
-Vector<CreatureObject*> TurretDataComponent::getAvailableTargets(bool aggroOnly) {
-	Vector<CreatureObject*> targets;
+void TurretDataComponent::fillAttributeList(AttributeListMessage* alm){
 
-	ManagedReference<TangibleObject*> turret = cast<TangibleObject*>(getParent());
-
-	if (turret == nullptr)
-		return targets;
-
-	CloseObjectsVector* vec = (CloseObjectsVector*)turret->getCloseObjects();
-
-	SortedVector<QuadTreeEntry*> closeObjects;
-
-	vec->safeCopyReceiversTo(closeObjects, CloseObjectsVector::CREOTYPE);
-
-	int targetTotal = 0;
-
-	for (int i = 0; i < closeObjects.size(); ++i) {
-		CreatureObject* creo = cast<CreatureObject*>(closeObjects.get(i));
-
-		if (creo != nullptr && checkTarget(creo, turret, aggroOnly)) {
-			targets.add(creo);
-		}
-	}
-
-	return targets;
-}
-
-CreatureObject* TurretDataComponent::selectTarget() {
-	ManagedReference<TangibleObject*> turret = cast<TangibleObject*>(getParent());
-
-	if (turret == nullptr)
-		return nullptr;
-
-	ManagedReference<CreatureObject*> lastTarget = lastAutoTarget.get();
-
-	bool isVillageTurret = turret->getObjectTemplate()->getFullTemplateString().contains("turret_fs_village");
-
-	if (!isVillageTurret || (lastTarget == nullptr || !checkTarget(lastTarget, turret, true))) {
-		lastAutoTarget = nullptr;
-
-		Vector<CreatureObject*> targets = getAvailableTargets(true);
-
-		if (targets.size() == 0)
-			return nullptr;
-
-		lastTarget = targets.get(System::random(targets.size() - 1));
-		lastAutoTarget = lastTarget;
-	}
-
-	return lastTarget;
-}
-
-bool TurretDataComponent::checkTarget(CreatureObject* creature, TangibleObject* turret, bool aggroOnly) {
-	if (creature == nullptr || turret == nullptr)
-		return false;
-
-	if (!creature->isAttackableBy(turret) || !turret->isInRange(creature, maxRange))
-		return false;
-
-	if (aggroOnly && !turret->hasDefender(creature) && !turret->isAggressiveTo(creature))
-		return false;
-
-	if (!CollisionManager::checkLineOfSight(creature, turret))
-		return false;
-
-	return true;
-}
-
-void TurretDataComponent::updateAutoCooldown(float secondsToAdd) {
-	int milisecondsToAdd = secondsToAdd*1000;
-	nextAutoFireTime = Time();
-	nextAutoFireTime.addMiliTime(milisecondsToAdd);
-}
-
-void TurretDataComponent::scheduleFireTask(CreatureObject* target, TangibleObject* terminal, int delay) {
-	//PRE: turret is locked
-
-	if (numberOfPlayersInRange.get() < 1)
-		return;
-
-	ManagedReference<TangibleObject*> turret = cast<TangibleObject*>(getParent());
-
-	if (turret->getZone() == nullptr)
-		return;
-
-	if (turretFireTask == nullptr) {
-		turretFireTask = new TurretFireTask(turret, terminal, target != nullptr);
-	}
-
-	TurretFireTask* task = turretFireTask.castTo<TurretFireTask*>();
-
-	if (task == nullptr)
-		return;
-
-	if (task->isManualFireTask()) {
-		if (target != nullptr && target != getManualTarget())
-			setManualTarget(target);
-	} else {
-		if (target != nullptr) {
-			if (target != getManualTarget())
-				setManualTarget(target);
-
-			task->setManualFireTask(true);
-			task->setTerminal(terminal);
-		}
-	}
-
-	if (target == nullptr && !task->isManualFireTask()) {
-		delay += getRescheduleDelay();
-	}
-
-	if (!task->isScheduled()) {
-		if (delay == 0)
-			task->execute();
-		else
-			task->schedule(delay);
-
-	} else if (task->isManualFireTask()) {
-		task->reschedule(attackSpeed * 1000);
-	}
-}
-
-void TurretDataComponent::rescheduleFireTask(bool wasManual, bool isManual) {
-	if (numberOfPlayersInRange.get() < 1)
-		return;
-
-	ManagedReference<TangibleObject*> turret = cast<TangibleObject*>(getParent());
-
-	if (turret == nullptr || turret->getZone() == nullptr)
-		return;
-
-	TurretFireTask* task = turretFireTask.castTo<TurretFireTask*>();
-
-	if (task == nullptr)
-		return;
-
-	if (wasManual) {
-		updateAutoCooldown(getAutoFireTimeout());
-	} else {
-		updateAutoCooldown(attackSpeed);
-	}
-
-	if (isManual) {
-		task->reschedule(attackSpeed * 1000);
-	} else {
-		setManualTarget(nullptr);
-		task->setManualFireTask(false);
-		task->setTerminal(nullptr);
-		task->reschedule(getRescheduleDelay());
-	}
-}
-
-int TurretDataComponent::getAutoFireTimeout() {
-	int cooldown = 20;
-
-	ManagedReference<InstallationObject*> turret = cast<InstallationObject*>(getParent());
-
-	if (turret != nullptr) {
-		Zone* zone = turret->getZone();
-
-		if (zone != nullptr) {
-			GCWManager* gcwMan = zone->getGCWManager();
-
-			if (gcwMan != nullptr)
-				cooldown = gcwMan->getTurretAutoFireTimeout();
-		}
-	}
-
-	return cooldown;
-}
-
-void TurretDataComponent::fillAttributeList(AttributeListMessage* alm) {
-	if (getParent() == nullptr)
+	if(getParent() == NULL)
 		return;
 
 	ManagedReference<InstallationObject*> turret = cast<InstallationObject*>(getParent());
@@ -364,80 +214,98 @@ void TurretDataComponent::fillAttributeList(AttributeListMessage* alm) {
 		alm->insertAttribute("cat_armor_vulnerability.armor_eff_restraint", "-");
 
 }
+void TurretDataComponent::updateAutoCooldown(float secondsToAdd){
+	int milisecondsToAdd = secondsToAdd*1000;
+	nextFireTime = Time();
+	nextFireTime.addMiliTime(milisecondsToAdd);
+}
 
-unsigned int TurretDataComponent::getArmorRating() {
-	if (templateData != nullptr)
+void TurretDataComponent::updateManualCooldown(float secondsToAdd){
+	int milisecondsToAdd = secondsToAdd*1000;
+	nextManualFireTime = Time();
+	nextManualFireTime.addMiliTime(milisecondsToAdd);
+}
+
+unsigned int TurretDataComponent::getArmorRating(){
+	if(templateData != NULL)
 		return templateData->getArmorRating();
 
 	return 0;
 }
 
-float TurretDataComponent::getKinetic() {
-	if (templateData != nullptr)
+float TurretDataComponent::getKinetic(){
+	if(templateData != NULL)
 		return templateData->getKinetic();
 
 	return 0;
 }
 
-float TurretDataComponent::getEnergy() {
-	if (templateData != nullptr)
+float TurretDataComponent::getEnergy(){
+	if(templateData != NULL)
 		return templateData->getEnergy();
 
 	return 0;
 }
 
-float TurretDataComponent::getElectricity() {
-	if (templateData != nullptr)
+float TurretDataComponent::getElectricity(){
+	if(templateData != NULL)
 		return templateData->getElectricity();
 
 	return 0;
 }
 
-float TurretDataComponent::getStun() {
-	if (templateData != nullptr)
+float TurretDataComponent::getStun(){
+	if(templateData != NULL)
 		return templateData->getStun();
 
 	return 0;
 }
 
-float TurretDataComponent::getBlast() {
-	if (templateData != nullptr)
+float TurretDataComponent::getBlast(){
+	if(templateData != NULL)
 		return templateData->getBlast();
 
 	return 0;
 }
 
-float TurretDataComponent::getHeat() {
-	if (templateData != nullptr)
+float TurretDataComponent::getHeat(){
+	if(templateData != NULL)
 		return templateData->getHeat();
 
 	return 0;
 }
 
-float TurretDataComponent::getCold() {
-	if (templateData != nullptr)
+float TurretDataComponent::getCold(){
+	if(templateData != NULL)
 		return templateData->getCold();
 
 	return 0;
 }
 
-float TurretDataComponent::getAcid() {
-	if (templateData != nullptr)
+float TurretDataComponent::getAcid(){
+	if(templateData != NULL)
 		return templateData->getAcid();
 
 	return 0;
 }
 
-float TurretDataComponent::getLightSaber() {
-	if (templateData != nullptr)
+float TurretDataComponent::getLightSaber(){
+	if(templateData != NULL)
 		return templateData->getLightSaber();
 
 	return 0;
 }
 
-float TurretDataComponent::getChanceHit() {
-	if (templateData != nullptr)
+float TurretDataComponent::getChanceHit(){
+	if(templateData != NULL)
 		return templateData->getChanceHit();
 
 	return 0;
+}
+
+String TurretDataComponent::getWeaponString(){
+	if(templateData != NULL)
+		return templateData->getWeapon();
+
+	return "";
 }

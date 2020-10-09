@@ -18,9 +18,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox() || cancelPressed)
 			return;
 
@@ -34,9 +32,9 @@ public:
 		if (index == -1)
 			return;
 
-		ManagedReference<SceneObject*> obj = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = suiBox->getUsingObject();
 
-		if (obj == nullptr || !obj->isTerminal())
+		if (obj == NULL || !obj->isTerminal())
 			return;
 
 		Terminal* terminal = cast<Terminal*>( obj.get());
@@ -50,11 +48,9 @@ public:
 
 		uint64 memberID = listBox->getMenuObjectID(index);
 
-		ManagedReference<GuildObject*> guild = player->getGuildObject().get();
-		if (guild == nullptr)
-			return;
+		ManagedReference<GuildObject*> guild = player->getGuildObject();
 
-		if (!guild->hasMember(player->getObjectID()) && !player->getPlayerObject()->isPrivileged()) {
+		if (guild == NULL || !guild->hasMember(memberID)) {
 			player->sendSystemMessage("@guild:generic_fail_no_permission"); //You do not have permission to perform that operation.
 			return;
 		}

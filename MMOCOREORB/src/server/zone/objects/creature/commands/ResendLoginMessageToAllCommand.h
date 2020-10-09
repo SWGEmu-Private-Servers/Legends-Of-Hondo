@@ -5,6 +5,8 @@
 #ifndef RESENDLOGINMESSAGETOALLCOMMAND_H_
 #define RESENDLOGINMESSAGETOALLCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+
 class ResendLoginMessageToAllCommand : public QueueCommand {
 public:
 
@@ -21,9 +23,16 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
+		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
+
+		if (ghost == NULL || !ghost->isPrivileged()) {
+			creature->sendSystemMessage("@error_message:insufficient_permissions"); //You do not have sufficient permissions to perform the requested action.
+			return INSUFFICIENTPERMISSION;
+		}
+
 		ManagedReference<PlayerManager*> playerManager = server->getPlayerManager();
 
-		if (playerManager != nullptr)
+		if (playerManager != NULL)
 			playerManager->resendLoginMessageToAll();
 
 		return SUCCESS;

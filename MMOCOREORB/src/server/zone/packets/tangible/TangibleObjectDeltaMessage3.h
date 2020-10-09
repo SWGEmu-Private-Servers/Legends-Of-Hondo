@@ -5,7 +5,7 @@
 #ifndef TANGIBLEOBJECTDELTAMESSAGE3_H_
 #define TANGIBLEOBJECTDELTAMESSAGE3_H_
 
-#include "server/zone/packets/DeltaMessage.h"
+#include "../../packets/DeltaMessage.h"
 
 #include "server/zone/objects/tangible/TangibleObject.h"
 
@@ -30,15 +30,25 @@ public:
 		addFloatUpdate(0, tano->getComplexity());
 	}
 
-	void updateObjectName(const StringId& name) {
-		addStringIdUpdate(1, name);
-	}
+	/*void updateName(const UnicodeString& name) {
+		if (tano->isPlayerCreature()) {
+			CreatureObject* player = cast<CreatureObject*>( tano);
 
-	void updateCustomName(const UnicodeString& name, const UnicodeString& tag = "") {
+			if (player->getPlayerObject()->isPrivileged()) {
+				String customName = name.toString() + " \\#ffff00[SWGEmu-Staff]\\#.";
+				addUnicodeUpdate(2, customName);
+				return;
+			}
+		}
+
+		addUnicodeUpdate(2, name);
+	}*/
+
+	void updateName(const UnicodeString& name, const UnicodeString& tag = "") {
 		if (tano->isPlayerCreature()) {
 			CreatureObject* player = cast<CreatureObject*>( tano.get());
 
-			if (player->getPlayerObject()->hasGodMode() && tag != "") {
+			if (player->getPlayerObject()->isPrivileged() && tag != "") {
 				UnicodeString customName = name + " \\#ffff00[" + tag + "]\\#.";
 				addUnicodeUpdate(2, customName);
 				return;
@@ -49,7 +59,7 @@ public:
 	}
 
 	void updateCountdownTimer() {
-		addIntUpdate(7, tano->getUseCount());
+		addIntUpdate(7, tano->getDisplayedUseCount());
 	}
 
 	void updateConditionDamage() {

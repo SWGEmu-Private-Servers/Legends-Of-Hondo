@@ -8,8 +8,9 @@
 #ifndef CLIENTPOIDATATABLE_H_
 #define CLIENTPOIDATATABLE_H_
 
-#include "templates/datatables/DataTableIff.h"
-#include "templates/datatables/DataTableRow.h"
+#include "engine/engine.h"
+#include "server/zone/templates/datatables/DataTableIff.h"
+#include "server/zone/templates/datatables/DataTableRow.h"
 
 class PoiData : public Object {
 protected:
@@ -76,7 +77,7 @@ public:
 		return pois.contains(name);
 	}
 
-	const Vector<Reference<PoiData*> >& getPois(const String& planetName) {
+	Vector<Reference<PoiData*> > getPois(const String& planetName) {
 		return pois.get(planetName);
 	}
 

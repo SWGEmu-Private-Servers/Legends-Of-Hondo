@@ -5,17 +5,22 @@
 #ifndef CMDSTARTSCENE_H_
 #define CMDSTARTSCENE_H_
 
-#include "engine/service/proto/BaseMessage.h"
+#include "engine/engine.h"
+
+#include "server/zone/objects/player/Races.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/terrain/Terrain.h"
+
 #include "server/zone/Zone.h"
-#include "templates/manager/TemplateManager.h"
+
+#include "server/zone/managers/templates/TemplateManager.h"
 
 class CmdStartScene : public BaseMessage {
 public:
 	CmdStartScene(CreatureObject* creo) : BaseMessage(50) {
 		Zone* zone = creo->getZone();
 
-		/*if (zone == nullptr)
+		/*if (zone == NULL)
 			zone = creo->getRootParent()->getZone();*/
 
 		insertShort(0x09);
@@ -23,9 +28,9 @@ public:
 		insertByte(0);
 		insertLong(creo->getObjectID());
 	 	insertAscii("terrain/" + zone->getZoneName() + ".trn"); //terrain name
-	 	insertFloat(creo->getWorldPositionX()); //X
-	 	insertFloat(creo->getWorldPositionZ()); //Z
-	 	insertFloat(creo->getWorldPositionY()); //Y
+	 	insertFloat(creo->getPositionX()); //X
+	 	insertFloat(creo->getPositionZ()); //Z
+	 	insertFloat(creo->getPositionY()); //Y
 	 	
 	 	//TODO: This should be deprecated when possible.
 		uint32 crc = creo->getClientObjectCRC();

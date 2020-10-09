@@ -9,6 +9,9 @@
 #define GAMBLINGSLOTPAYOUTSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/objects/player/sui/listbox/SuiListBox.h"
+#include "server/zone/objects/scene/SceneObjectType.h"
+#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/managers/minigames/GamblingManager.h"
 
 class GamblingSlotPayoutSuiCallback : public SuiCallback {
@@ -17,8 +20,8 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		if (!suiBox->isListBox() || player == nullptr)
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
+		if (!suiBox->isListBox() || player == NULL)
 			return;
 
 		player->sendMessage(suiBox->generateCloseMessage());

@@ -5,13 +5,15 @@
 #ifndef SABER2HBODYHIT2COMMAND_H_
 #define SABER2HBODYHIT2COMMAND_H_
 
-#include "JediCombatQueueCommand.h"
+#include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/managers/combat/CombatManager.h"
+#include "CombatQueueCommand.h"
 
-class Saber2hBodyHit2Command : public JediCombatQueueCommand {
+class Saber2hBodyHit2Command : public CombatQueueCommand {
 public:
 
 	Saber2hBodyHit2Command(const String& name, ZoneProcessServer* server)
-		: JediCombatQueueCommand(name, server) {
+		: CombatQueueCommand(name, server) {
 
 	}
 

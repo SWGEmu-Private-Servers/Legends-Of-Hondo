@@ -25,7 +25,6 @@ public:
 	EntertainingData(const EntertainingData& d) : Object(), Serializable() {
 		duration = d.duration;
 		strength = d.strength;
-		timeStarted = d.timeStarted;
 
 		addSerializableVariables();
 	}

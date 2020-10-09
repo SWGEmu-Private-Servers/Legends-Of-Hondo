@@ -17,9 +17,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox())
 			return;
 
@@ -29,10 +27,10 @@ public:
 		ManagedReference<Facade*> facade = player->getActiveSession(SessionFacadeType::SLICING);
 		ManagedReference<SlicingSession*> session = dynamic_cast<SlicingSession*>(facade.get());
 
-		if (session == nullptr) {
+		if (session == NULL) {
 			ManagedReference<TangibleObject*> obj = cast<TangibleObject*>( suiBox->getUsingObject().get().get());
 
-			if (obj != nullptr) {
+			if (obj != NULL) {
 				Locker crosslock(obj, player);
 				obj->dropActiveSession(SessionFacadeType::SLICING);
 			}

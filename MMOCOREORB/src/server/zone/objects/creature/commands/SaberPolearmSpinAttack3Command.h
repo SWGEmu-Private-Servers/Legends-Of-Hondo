@@ -5,13 +5,14 @@
 #ifndef SABERPOLEARMSPINATTACK3COMMAND_H_
 #define SABERPOLEARMSPINATTACK3COMMAND_H_
 
-#include "JediCombatQueueCommand.h"
+#include "server/zone/objects/scene/SceneObject.h"
+#include "CombatQueueCommand.h"
 
-class SaberPolearmSpinAttack3Command : public JediCombatQueueCommand {
+class SaberPolearmSpinAttack3Command : public CombatQueueCommand {
 public:
 
 	SaberPolearmSpinAttack3Command(const String& name, ZoneProcessServer* server)
-		: JediCombatQueueCommand(name, server) {
+		: CombatQueueCommand(name, server) {
 
 	}
 

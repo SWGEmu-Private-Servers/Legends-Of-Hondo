@@ -9,7 +9,6 @@
 #define TIPBANKSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
 
 class TipCommandSuiCallback: public SuiCallback {
 private:
@@ -17,14 +16,15 @@ private:
 	int amount;
 
 public:
-	TipCommandSuiCallback(ZoneServer* server, CreatureObject* target, int amount) :
+	TipCommandSuiCallback(ZoneServer* server, CreatureObject* target,
+			int amount) :
 		SuiCallback(server) {
 		this->targetPlayer = target;
 		this->amount = amount;
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed,
+			Vector<UnicodeString>* args) {
 
 		if (!suiBox->isMessageBox() || cancelPressed) {
 			return;
@@ -43,13 +43,8 @@ public:
 
 		// Perform the bank tip
 		Locker clocker(targetPlayer, player);
-
-		TransactionLog trx(player, targetPlayer, TrxCode::PLAYERTIP, amount, false);
-		TransactionLog trxFee(player, TrxCode::TIPSURCHARGE, surcharge, false);
-		trxFee.groupWith(trx);
-
 		player->subtractBankCredits(amount + surcharge);
-		targetPlayer->addBankCredits(amount, true);
+		targetPlayer->addBankCredits(amount, false); // FIXME: param notifyClient does nothing atm. in CreatureObject.idl:637
 
 		// Duly notify parties involved
 		if (targetPlayer->isOnline()) {
@@ -67,7 +62,7 @@ public:
 
 		ManagedReference<ChatManager*> cman =
 				player->getZoneServer()->getChatManager();
-		if (cman == nullptr)
+		if (cman == NULL)
 			return;
 
 		UnicodeString subject("@base_player:wire_mail_subject"); // Bank Transfer Complete...

@@ -5,6 +5,7 @@
 #ifndef MEDITATECOMMAND_H_
 #define MEDITATECOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/player/events/MeditateTask.h"
 
@@ -18,28 +19,26 @@ public:
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
 
-		if (!checkStateMask(creature)) {
-			creature->sendSystemMessage("@teraskasi:med_fail");
+		if (!checkStateMask(creature))
 			return INVALIDSTATE;
-		}
 
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
 		if (!creature->isPlayerCreature())
 			return GENERALERROR;
-
+			
 		if (creature->isInCombat()) {
 			creature->sendSystemMessage("@jedi_spam:not_while_in_combat");
 			return GENERALERROR;
-		}
+		}			
 
 		// Meditate
 		CreatureObject* player = cast<CreatureObject*>(creature);
 
 		Reference<Task*> task = player->getPendingTask("meditate");
 
-		if (task != nullptr) {
+		if (task != NULL) {
 			player->sendSystemMessage("@jedi_spam:already_in_meditative_state");
 			return GENERALERROR;
 		}

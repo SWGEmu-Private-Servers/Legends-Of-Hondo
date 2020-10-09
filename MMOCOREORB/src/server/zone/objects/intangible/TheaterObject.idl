@@ -7,18 +7,12 @@ package server.zone.objects.intangible;
 import server.zone.objects.intangible.IntangibleObject;
 import server.zone.objects.tangible.DespawnLairOnPlayerDisappear;
 import server.zone.objects.creature.CreatureObject;
-import server.zone.objects.scene.SceneObject;
-include server.zone.CloseObjectsVector;
-import server.zone.QuadTreeEntry;
-include system.thread.atomic.AtomicInteger;
-include engine.log.Logger;
+include engine.util.u3d.CloseObjectsVector;
+include engine.util.u3d.QuadTreeEntry;
 
-@json
 class TheaterObject extends IntangibleObject {
-	@dereferenced
-	protected transient AtomicInteger numberOfPlayersInRange;
+	protected int numberOfPlayersInRange;
 	protected boolean despawnOnNoPlayersInRange;
-	protected boolean shouldFlatten;
 
 	protected transient DespawnLairOnPlayerDisappear despawnEvent;
 
@@ -28,13 +22,13 @@ class TheaterObject extends IntangibleObject {
 		super.closeobjects = new CloseObjectsVector();
 		super.closeobjects.setNoDuplicateInsertPlan();
 
+		numberOfPlayersInRange = 0;
 		despawnOnNoPlayersInRange = false;
-		shouldFlatten = false;
 	}
 
-	@dirty
+	@read
 	public int getNumberOfPlayersInRange() {
-		return numberOfPlayersInRange.get();
+		return numberOfPlayersInRange;
 	}
 
 	@read
@@ -47,16 +41,6 @@ class TheaterObject extends IntangibleObject {
 		despawnOnNoPlayersInRange = b;
 	}
 
-	@read
-	public boolean shouldFlattenTheater() {
-		return shouldFlatten;
-	}
-
-	@preLocked
-	public void setShouldFlatten(boolean b) {
-		shouldFlatten = b;
-	}
-
 	public void notifyInsert(QuadTreeEntry entry) {
 		SceneObject obj = (SceneObject) entry;
 
@@ -66,7 +50,7 @@ class TheaterObject extends IntangibleObject {
 		if (obj.isPlayerCreature()) {
 			CreatureObject creo = (CreatureObject) obj;
 			if (!creo.isInvisible()) {
-				numberOfPlayersInRange.increment();
+				numberOfPlayersInRange++;
 				clearDespawnEvent();
 			}
 		}
@@ -81,16 +65,16 @@ class TheaterObject extends IntangibleObject {
 		if (obj.isPlayerCreature()) {
 			CreatureObject creo = (CreatureObject) obj;
 			if (!creo.isInvisible()) {
-				int val = numberOfPlayersInRange.decrement();
+				numberOfPlayersInRange = numberOfPlayersInRange - 1;
 
-				if (val <= 0 && despawnOnNoPlayersInRange)
+				if (numberOfPlayersInRange <= 0 && despawnOnNoPlayersInRange)
 					activateDespawnEvent();
 			}
 		}
 	}
 
 	public void activateDespawnEvent() {
-		if (despawnEvent)
+		if (despawnEvent != null)
 			return;
 
 		despawnEvent = new DespawnLairOnPlayerDisappear(this);
@@ -98,7 +82,7 @@ class TheaterObject extends IntangibleObject {
 	}
 
 	public void clearDespawnEvent() {
-		if (!despawnEvent)
+		if (despawnEvent == null)
 			return;
 
 		despawnEvent.cancel();

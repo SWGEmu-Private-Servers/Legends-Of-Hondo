@@ -4,21 +4,20 @@
 
 package server.zone.objects.mission;
 
+import engine.lua.LuaObject;
 import server.zone.objects.intangible.IntangibleObject;
 import server.zone.objects.waypoint.WaypointObject;
+import server.zone.Zone;
 
 include server.zone.objects.scene.variables.StringId;
-include templates.SharedObjectTemplate;
+import server.zone.templates.SharedObjectTemplate;
+import server.zone.objects.mission.MissionObserver;
 import server.zone.objects.creature.CreatureObject;
-import server.zone.objects.scene.SceneObject;
+import system.util.SortedVector;
 import server.zone.objects.mission.MissionObjective;
-include templates.TemplateReference;
+include server.zone.templates.TemplateReference;
 import server.zone.managers.mission.spawnmaps.NpcSpawnPoint;
-include server.zone.objects.mission.MissionTypes;
-include server.zone.packets.scene.AttributeListMessage;
-include templates.faction.Factions;
 
-@json
 class MissionObject extends IntangibleObject {
 	protected WaypointObject waypointToMission;
 
@@ -30,11 +29,10 @@ class MissionObject extends IntangibleObject {
 	protected int difficulty;
 	protected unicode creatorName;
 	protected int rewardCredits;
-	protected int rewardCreditsDivisor;
 	protected int rewardFactionPointsRebel;
 	protected int rewardFactionPointsImperial;
 	protected int missionNumber;
-	protected unsigned int faction;
+	protected int faction;
 	protected int missionLevel;
 
 	protected float size;
@@ -58,6 +56,8 @@ class MissionObject extends IntangibleObject {
 	protected unsigned int refreshCounter;
 
 	protected string targetName;
+	protected NpcSpawnPoint missionTarget;
+	protected NpcSpawnPoint missionTargetDest;
 
 	protected string templateString1;
 	protected string templateString2;
@@ -68,8 +68,27 @@ class MissionObject extends IntangibleObject {
 
 	protected string targetOptionalTemplate;
 
+	// mission type crc's ex: String("destroy").hashCode() = 0x74ef9be3
+	public static final int DESTROY = 0x74EF9BE3; // generic
+	public static final int BOUNTY = 0x2904F372; // bounty
+	public static final int DELIVER = 0xE5C27EC6; // generic
+	public static final int CRAFTING = 0xE5F6DC59; // artisan
+	public static final int ESCORT = 0x682B871E; // ???
+	public static final int ESCORT2ME = 0x58F59884; // ???
+	public static final int ESCORTTOCREATOR = 0x5E4C7163; // ???
+	public static final int HUNTING = 0x906999A2; // scout
+	public static final int MUSICIAN = 0x4AD93196; // entertainer
+	public static final int DANCER = 0xF067B37; // entertainer
+	public static final int RECON = 0x34F4C2E4; // scout
+	public static final int SURVEY = 0x19C9FAC1; // artisan
+
+	//Faction types
+	public static final int FACTIONNEUTRAL = 0;
+	public static final int FACTIONIMPERIAL = 0xDB4ACC54;
+	public static final int FACTIONREBEL = 0x16148850;
+
 	public MissionObject() {
-		typeCRC = MissionTypes.SURVEY;
+		typeCRC = SURVEY;
 
 		refreshCounter = 0;
 
@@ -84,7 +103,6 @@ class MissionObject extends IntangibleObject {
 		difficulty = 2;
 
 		rewardCredits = 100;
-		rewardCreditsDivisor = 1;
 		rewardFactionPointsRebel = 0;
 		rewardFactionPointsImperial = 0;
 
@@ -92,29 +110,16 @@ class MissionObject extends IntangibleObject {
 
 		startPositionX = 0;
 		startPositionY = 0;
-		endPositionX = 0;
-		endPositionY = 0;
+
+		missionTarget = null;
+		missionTargetDest = null;
 
 		targetObjectId = 0;
 
-		faction = Factions.FACTIONNEUTRAL;
-
-		missionNumber = 0;
-		missionLevel = 0;
+		faction = FACTIONNEUTRAL;
 
 		Logger.setLoggingName("MissionObject");
 	}
-
-	/**
-	 * Fills the attribute list message options that are sent to player creature
-	 * @pre { }
-	 * @post { }
-	 * @param msg attribute list message with the attributes
-	 * @param object player creature to which the message is sent
-	 */
-	@local
-	@dirty
-	public native void fillAttributeList(AttributeListMessage msg, CreatureObject object);
 
 	@preLocked
 	public native WaypointObject createWaypoint();
@@ -147,9 +152,9 @@ class MissionObject extends IntangibleObject {
 
 	@preLocked
 	public native void setMissionDescription(final string file, final string id, boolean notifyClient = true);
-	@preLocked
+	public native void updateHuntingMissionDescription(final string message, boolean notifyClient = true);
 	public native void setMissionTitle(final string file, final string id, boolean notifyClient = true);
-	@preLocked
+	public native void setMissionTitleAsCreatureName(final string heading, final string message, boolean notifyClient = true);
 	public native void setMissionTargetName(final string target, boolean notifyClient = true);
 	public native void setMissionDifficulty(int diffLevel, boolean notifyClient = true);
 	@preLocked
@@ -173,7 +178,7 @@ class MissionObject extends IntangibleObject {
 	public native void updateMissionLocation();
 
 	public void abort() {
-		if (missionObjective)
+		if (missionObjective != null)
 			missionObjective.abort();
 	}
 
@@ -188,6 +193,11 @@ class MissionObject extends IntangibleObject {
 	}
 
 	@preLocked
+	public void setStartPlanet(final string planet) {
+		startPlanet = planet;
+	}
+
+	@preLocked
 	public void setRewardFactionPointsRebel(int points) {
 		rewardFactionPointsRebel = points;
 	}
@@ -195,6 +205,23 @@ class MissionObject extends IntangibleObject {
 	@preLocked
 	public void setRewardFactionPointsImperial(int points) {
 		rewardFactionPointsImperial = points;
+	}
+
+	@preLocked
+	public void setEndPlanet(string planetName) {
+		endPlanet = planetName;
+	}
+
+	@local
+	@preLocked
+	public void setMissionTarget(NpcSpawnPoint target) {
+		missionTarget = target;
+	}
+
+	@local
+	@preLocked
+	public void setMissionTargetDest(NpcSpawnPoint target) {
+		missionTargetDest = target;
 	}
 
 	@preLocked
@@ -219,7 +246,7 @@ class MissionObject extends IntangibleObject {
 	}
 
 	@read
-	public unsigned int getFaction() {
+	public int getFaction() {
 		return faction;
 	}
 
@@ -268,14 +295,21 @@ class MissionObject extends IntangibleObject {
 		return endPlanet;
 	}
 
-	@preLocked
-	public void setEndPlanet(final string newEndPlanet) {
-		endPlanet = newEndPlanet;
-	}
-
 	@dirty
 	public WaypointObject getWaypointToMission() {
 		return waypointToMission;
+	}
+
+	@dirty
+	@local
+	public NpcSpawnPoint getMissionTarget() {
+		return missionTarget;
+	}
+
+	@dirty
+	@local
+	public NpcSpawnPoint getMissionTargetDest() {
+		return missionTargetDest;
 	}
 
 	@read
@@ -286,11 +320,6 @@ class MissionObject extends IntangibleObject {
 	@read
 	public int getRewardCredits() {
 		return rewardCredits;
-	}
-
-	@read
-	public int getRewardCreditsDivisor() {
-		return rewardCreditsDivisor;
 	}
 
 	@read
@@ -346,7 +375,7 @@ class MissionObject extends IntangibleObject {
 
 	@dirty
 	public boolean isSurveyMission() {
-		return typeCRC == MissionTypes.SURVEY;
+		return typeCRC == SURVEY;
 	}
 
 	@dirty

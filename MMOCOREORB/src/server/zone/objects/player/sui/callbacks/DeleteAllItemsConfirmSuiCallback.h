@@ -10,36 +10,26 @@
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
 #include "server/zone/objects/building/BuildingObject.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
+#include "server/zone/Zone.h"
+
 
 class DeleteAllItemsConfirmSuiCallback : public SuiCallback {
 public:
 	DeleteAllItemsConfirmSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!sui->isMessageBox() || cancelPressed)
 			return;
 
-		ManagedReference<SceneObject*> obj = sui->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = sui->getUsingObject();
 
-		if (obj == nullptr || !obj->isBuildingObject())
+		if (obj == NULL || !obj->isBuildingObject())
 			return;
 
 		BuildingObject* building = cast<BuildingObject*>( obj.get());
 
 		Locker _lock(building, creature);
-
-		TransactionLog trx(TrxCode::PLAYERMISCACTION, creature, building);
-
-		if (trx.isVerbose()) {
-			// Force a synchronous export because the objects will be deleted before we can export them!
-			trx.addRelatedObject(building, true);
-			trx.setExportRelatedObjects(true);
-			trx.exportRelated();
-		}
 
 		building->destroyAllPlayerItems();
 

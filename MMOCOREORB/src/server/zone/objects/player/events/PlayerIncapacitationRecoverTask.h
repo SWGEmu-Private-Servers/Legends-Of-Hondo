@@ -8,8 +8,11 @@
 #ifndef PLAYERINCAPACITATIONRECOVERTASK_H_
 #define PLAYERINCAPACITATIONRECOVERTASK_H_
 
-#include "templates/params/creature/CreatureAttribute.h"
+#include "server/zone/objects/creature/CreatureAttribute.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/packets/tangible/UpdatePVPStatusMessage.h"
+#include "server/zone/packets/creature/CreatureObjectMessage6.h"
+#include "server/zone/packets/tangible/UpdatePVPStatusMessage.h"
 
 namespace server {
 namespace zone {
@@ -39,14 +42,6 @@ public:
 		try {
 			Locker playerLocker(player);
 
-
-
-			PlayerObject* ghost = player->getPlayerObject();
-
-			if (ghost == nullptr) {
-				return;
-			}
-
 			if (!deadRecovery)
 				player->removePendingTask("incapacitationRecovery");
 
@@ -54,8 +49,6 @@ public:
 				return;
 			else if (deadRecovery && !player->isDead())
 				return;
-
-			ghost->setCloning(false);
 
 			int health = player->getHAM(CreatureAttribute::HEALTH);
 
@@ -72,18 +65,12 @@ public:
 			if (mind < 0)
 				player->setHAM(CreatureAttribute::MIND, 1);
 
-			player->removeFeignedDeath();
-
 			player->setPosture(CreaturePosture::UPRIGHT);
-
-			player->notifyObservers(ObserverEventType::CREATUREREVIVED, nullptr, 0);
-
-			if (ghost->getForcePowerMax() > 0 && ghost->getForcePower() < ghost->getForcePowerMax()) {
-				ghost->activateForcePowerRegen();
-			}
 
 			if (deadRecovery) {
 				player->playEffect("clienteffect/player_clone_compile.cef");
+				player->getPlayerObject()->resetIncapacitationCounter();
+				player->getPlayerObject()->resetFirstIncapacitationTime();
 				player->notifyObservers(ObserverEventType::PLAYERCLONED, player, 0);
 				player->broadcastPvpStatusBitmask();
 			}

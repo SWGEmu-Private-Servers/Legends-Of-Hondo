@@ -18,9 +18,7 @@ public:
 		: SuiCallback(server) {
 	}
 	/** droid and player should be locked by the ui start */
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox())
 			return;
 
@@ -30,19 +28,19 @@ public:
 		bool otherPressed = Bool::valueOf(args->get(0).toString());
 		int index = Integer::valueOf(args->get(1).toString());
 		SuiListBox* listBox = cast<SuiListBox*>( suiBox);
-		ManagedReference<SceneObject*> object = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> object = suiBox->getUsingObject();
 
-		if (object == nullptr) {
+		if (object == NULL) {
 			return;
 		}
 
 		DroidObject* droid = cast<DroidObject*>(object.get());
-		if (droid == nullptr){
+		if (droid == NULL){
 			return;
 		}
 		Locker crosslock(droid,player);
-		auto module = droid->getModule("playback_module").castTo<DroidPlaybackModuleDataComponent*>();
-		if(module == nullptr) {
+		DroidPlaybackModuleDataComponent* module = cast<DroidPlaybackModuleDataComponent*>( droid->getModule("playback_module"));
+		if(module == NULL) {
 			return;
 		}
 

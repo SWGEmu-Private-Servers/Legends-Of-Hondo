@@ -5,6 +5,7 @@
 #ifndef BOOSTMORALECOMMAND_H_
 #define BOOSTMORALECOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/objects/group/GroupObject.h"
 #include "server/chat/ChatManager.h"
 #include "SquadLeaderCommand.h"
@@ -28,15 +29,6 @@ public:
 			return GENERALERROR;
 
 		ManagedReference<CreatureObject*> player = cast<CreatureObject*>(creature);
-
-		if (player == nullptr)
-			return GENERALERROR;
-
-		ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
-
-		if (ghost == nullptr)
-			return GENERALERROR;
-
 		ManagedReference<GroupObject*> group = player->getGroup();
 
 		if (!checkGroupLeader(player, group))
@@ -61,9 +53,9 @@ public:
 		if (!distributeWounds(player, group, wounds))
 			return GENERALERROR;
 
-		if (!ghost->getCommandMessageString(STRING_HASHCODE("boostmorale")).isEmpty() && creature->checkCooldownRecovery("command_message")) {
-			UnicodeString shout(ghost->getCommandMessageString(STRING_HASHCODE("boostmorale")));
- 	 	 	server->getChatManager()->broadcastChatMessage(player, shout, 0, 80, player->getMoodID(), 0, ghost->getLanguageID());
+		if (player->isPlayerCreature() && player->getPlayerObject()->getCommandMessageString(STRING_HASHCODE("boostmorale")).isEmpty()==false && creature->checkCooldownRecovery("command_message")) {
+			UnicodeString shout(player->getPlayerObject()->getCommandMessageString(STRING_HASHCODE("boostmorale")));
+ 	 	 	server->getChatManager()->broadcastMessage(player, shout, 0, 0, 80);
  	 	 	creature->updateCooldownTimer("command_message", 30 * 1000);
 		}
 
@@ -71,27 +63,29 @@ public:
 	}
 
 	void getWounds(CreatureObject* leader, GroupObject* group, int* wounds) const {
-		if (group == nullptr || leader == nullptr)
+		if (group == NULL || leader == NULL)
 			return;
 
 		for (int i = 0; i < group->getGroupSize(); i++) {
 
-			ManagedReference<CreatureObject*> member = group->getGroupMember(i);
+			ManagedReference<SceneObject*> member = group->getGroupMember(i);
 
-			if (member == nullptr)
+			if (member == NULL)
 				continue;
 
 			if (!member->isPlayerCreature())
 				continue;
 
-			if (!isValidGroupAbilityTarget(leader, member, false))
+			CreatureObject* memberPlayer = cast<CreatureObject*>( member.get());
+
+			if (!isValidGroupAbilityTarget(leader, memberPlayer, false))
 				continue;
 
-			Locker clocker(member, leader);
+			Locker clocker(memberPlayer, leader);
 
 			for (int j = 0; j < 9; j++) {
-				wounds[1] += member->getWounds(j);
-				member->setWounds(j, 0);
+				wounds[1] += memberPlayer->getWounds(j);
+				memberPlayer->setWounds(j, 0);
 			}
 
 			wounds[0]++;
@@ -99,7 +93,7 @@ public:
 	}
 
 	bool distributeWounds(CreatureObject* leader, GroupObject* group, int* wounds) const {
-		if (group == nullptr || leader == nullptr)
+		if (group == NULL || leader == NULL)
 			return false;
 
 		int woundsPerMember = ceil((float)wounds[1]/(float)wounds[0]);
@@ -108,20 +102,22 @@ public:
 		int totalWoundsApplied = 0;
 		for (int i = 0; i < group->getGroupSize(); i++) {
 
-			ManagedReference<CreatureObject*> member = group->getGroupMember(i);
+			ManagedReference<SceneObject*> member = group->getGroupMember(i);
 
-			if (member == nullptr)
+			if (member == NULL)
 				continue;
 
 			if (!member->isPlayerCreature())
 				continue;
 
-			if (!isValidGroupAbilityTarget(leader, member, false))
+			CreatureObject* memberPlayer = cast<CreatureObject*>( member.get());
+
+			if (!isValidGroupAbilityTarget(leader, memberPlayer, false))
 				continue;
 
-			Locker clocker(member, leader);
+			Locker clocker(memberPlayer, leader);
 
-			sendCombatSpam(member);
+			sendCombatSpam(memberPlayer);
 
 			int woundsApplied = 0;
 			for (int j = 0; j < 9; j++) {
@@ -135,7 +131,7 @@ public:
 				if (totalWoundsApplied + woundsToApply > wounds[1])
 					woundsToApply = wounds[1] - totalWoundsApplied;
 
-				member->addWounds(j, woundsToApply, true, false);
+				memberPlayer->addWounds(j, woundsToApply, true, false);
 
 				woundsApplied += woundsToApply;
 				totalWoundsApplied += woundsToApply;
@@ -144,7 +140,7 @@ public:
 					break;
 			}
 
-			checkForTef(leader, member);
+			checkForTef(leader, memberPlayer);
 
 			if (totalWoundsApplied >= wounds[1])
 				break;

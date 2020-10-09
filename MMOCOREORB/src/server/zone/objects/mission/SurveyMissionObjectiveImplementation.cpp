@@ -8,9 +8,12 @@
 #include "server/zone/objects/mission/SurveyMissionObjective.h"
 #include "server/zone/objects/mission/MissionObserver.h"
 #include "server/zone/objects/mission/MissionObject.h"
-#include "templates/params/ObserverEventType.h"
+#include "server/zone/objects/scene/ObserverEventType.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/resource/ResourceSpawn.h"
+#include "server/zone/managers/object/ObjectManager.h"
+#include "server/zone/managers/mission/MissionManager.h"
+#include "server/zone/ZoneServer.h"
 
 void SurveyMissionObjectiveImplementation::activate() {
 	MissionObjectiveImplementation::activate();
@@ -20,7 +23,7 @@ void SurveyMissionObjectiveImplementation::activate() {
 	}
 
 	ManagedReference<CreatureObject*> player = getPlayerOwner();
-	if (player != nullptr) {
+	if (player != NULL) {
 		ManagedReference<MissionObserver*> observer = new MissionObserver(_this.getReferenceUnsafeStaticCast());
 		addObserver(observer, true);
 
@@ -37,7 +40,7 @@ void SurveyMissionObjectiveImplementation::abort() {
 	ManagedReference<MissionObserver*> observer = getObserver(0);
 
 	ManagedReference<CreatureObject*> player = getPlayerOwner();
-	if (player != nullptr) {
+	if (player != NULL) {
 		player->dropObserver(ObserverEventType::SURVEY, observer);
 
 		dropObserver(observer, true);
@@ -51,23 +54,17 @@ void SurveyMissionObjectiveImplementation::complete() {
 int SurveyMissionObjectiveImplementation::notifyObserverEvent(MissionObserver* observer, uint32 eventType, Observable* observable, ManagedObject* arg1, int64 arg2) {
 	if (eventType == ObserverEventType::SURVEY) {
 		ManagedReference<CreatureObject*> player = getPlayerOwner();
-		ManagedReference<MissionObject*> mission = this->mission.get();
-
-		if (player == nullptr || mission == nullptr) {
+		if (player == NULL) {
 			return 0;
 		}
 
 		ResourceSpawn* sampledSpawn = cast<ResourceSpawn*>( arg1);
 
-		if (sampledSpawn == nullptr) {
-			return 0;
-		}
-
 		int sampledDensity = (int)arg2;
 		if (sampledSpawn->getSurveyMissionSpawnFamilyName() == spawnFamily && (sampledDensity >= efficiency)) {
 			Vector3 startPosition;
-			startPosition.setX(mission->getStartPositionX());
-			startPosition.setY(mission->getStartPositionY());
+			startPosition.setX(mission.get()->getStartPositionX());
+			startPosition.setY(mission.get()->getStartPositionY());
 			float distance = startPosition.distanceTo(player->getWorldPosition());
 			if (distance > 1024.0f) {
 				complete();

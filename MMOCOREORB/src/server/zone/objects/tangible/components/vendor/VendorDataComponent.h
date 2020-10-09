@@ -10,7 +10,10 @@
 
 #include "AuctionTerminalDataComponent.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/auction/AuctionItem.h"
+#include "server/zone/managers/vendor/VendorManager.h"
 #include "server/zone/managers/auction/AuctionsMap.h"
+#include "server/zone/Zone.h"
 
 class VendorDataComponent: public AuctionTerminalDataComponent {
 protected:
@@ -23,61 +26,65 @@ protected:
 	bool disabled;
 	bool registered;
 
-	SerializableTime lastSuccessfulUpdate;
+	Time lastSuccessfulUpdate;
 
 	int maintAmount;
 
-	SerializableTime lastXpAward;
+	Time lastXpAward;
 	int awardUsageXP;
 
 	bool adBarking;
 
-	SerializableTime emptyTimer;
-	SerializableTime inactiveTimer;
+	Time emptyTimer;
+	Time inactiveTimer;
 
 	bool mail1Sent;
+	bool mail2Sent;
 
 	Vector<uint64> vendorBarks;
 	uint64 lastBark;
-	SerializableString barkMessage;
-	SerializableString barkMood;
-	SerializableString barkAnimation;
+	String barkMessage;
+	String barkMood;
+	String barkAnimation;
 
 	float originalDirection;
 
-	Mutex adBarkingMutex;
-
 public:
-
+	/// 5 minutes
 	enum {
-		USEXPINTERVAL       = 5, // 5 minutes
+		USEXPINTERVAL       = 5,
 
-		VENDORCHECKINTERVAL = 60, // 60 Minutes
-		VENDORCHECKDELAY    = 20, // 20 Minutes
+		// 60 Minutes
+		VENDORCHECKINTERVAL = 60,
+		VENDORCHECKDELAY    = 20,
 
-		EMPTYWARNING        = 60 * 60 * 24 * 14, // 14 days
-		EMPTYDELETE         = 60 * 60 * 24 * 28, // 28 days
+		FIRSTWARNING        = 60 * 60 * 24 * 25, // 5 days
+		SECONDWARNING       = 60 * 60 * 24 * 50, // 10 days
+		EMPTYDELETE         = 60 * 60 * 24 * 14, // 14 days
 
 		DELETEWARNING       = 60 * 60 * 24 * 100, // 100 days
 
-		BARKRANGE           = 15, // 15 Meters
-		BARKINTERVAL        = 60 * 2 // 2 Minutes
+		BARKRANGE           = 15, //Meters
+		BARKINTERVAL        = 60 * 2 //Minutes
 	};
 
 public:
 	VendorDataComponent();
 
 	virtual ~VendorDataComponent() {
-
+		if (vendorCheckTask != NULL)
+			vendorCheckTask->cancel();
 	}
 
 	void initializeTransientMembers();
 
 	void notifyObjectDestroyingFromDatabase();
 
-	void runVendorUpdate();
+	void sendVendorUpdateMail(bool isEmpty);
 
-	void writeJSON(nlohmann::json& j) const;
+	void sendVendorDestroyMail();
+
+	void runVendorUpdate();
 
 	void setOwnerId(uint64 id) {
 		ownerId = id;
@@ -96,11 +103,10 @@ public:
 		updateUID();
 
 		ManagedReference<SceneObject*> strongParent = parent.get();
-		if (strongParent == nullptr)
+		if (strongParent == NULL)
 			return;
 
 		originalDirection = strongParent->getDirectionAngle();
-		setVendorSearchEnabled(true);
 	}
 
 	void setVendorSearchEnabled(bool enabled);
@@ -159,25 +165,22 @@ public:
 	}
 
 	inline bool isAdBarkingEnabled() {
-		Locker locker(&adBarkingMutex);
 		return adBarking;
 	}
 
 	inline void setAdBarking(bool value) {
-		Locker locker(&adBarkingMutex);
 		vendorBarks.removeAll();
 		adBarking = value;
 	}
 
 	inline bool isEmpty() {
-		ManagedReference<AuctionManager*> auctionManager = auctionMan.get();
 
-		if (auctionManager == nullptr)
+		if (auctionManager == NULL)
 			return false;
 
 		ManagedReference<AuctionsMap*> auctionsMap =
 				auctionManager->getAuctionMap();
-		if (auctionsMap == nullptr) {
+		if (auctionsMap == NULL) {
 			return false;
 		}
 
@@ -186,6 +189,7 @@ public:
 
 	inline void setEmpty() {
 		mail1Sent = false;
+		mail2Sent = false;
 
 		emptyTimer.updateToCurrentTime();
 	}
@@ -210,50 +214,20 @@ public:
 		barkAnimation = animation;
 	}
 
-	String getAdPhrase() {
-		return barkMessage;
-	}
-
-	String getAdMood() {
-		return barkMood;
-	}
-
-	String getAdAnimation() {
-		return barkAnimation;
-	}
-
 	bool hasBarkTarget(SceneObject* target) {
-		Locker locker(&adBarkingMutex);
 		return vendorBarks.contains(target->getObjectID());
 	}
 
 	void addBarkTarget(SceneObject* target) {
-		Locker locker(&adBarkingMutex);
 		vendorBarks.add(target->getObjectID());
 	}
 
 	bool canBark() {
-		Locker locker(&adBarkingMutex);
 		return (time(0) - lastBark > BARKINTERVAL);
 	}
 
-	void resetLastBark() {
-		Locker locker(&adBarkingMutex);
-		lastBark = time(0);
-	}
-
 	void clearVendorBark(SceneObject* target) {
-		Locker locker(&adBarkingMutex);
 		vendorBarks.removeElement(target->getObjectID());
-	}
-
-	void removeAllVendorBarks() {
-		Locker locker(&adBarkingMutex);
-		vendorBarks.removeAll();
-	}
-
-	float getOriginalDirection() {
-		return originalDirection;
 	}
 
 	float getMaintenanceRate();
@@ -267,10 +241,6 @@ public:
 	void handleWithdrawMaintanence(int value);
 
 	void performVendorBark(SceneObject* target);
-
-	void scheduleVendorCheckTask(int delay); // In minutes
-
-	void cancelVendorCheckTask();
 
 private:
 	void addSerializableVariables();

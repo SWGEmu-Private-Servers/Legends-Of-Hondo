@@ -8,7 +8,7 @@
 #ifndef OBJECTMENUSELECT_H_
 #define OBJECTMENUSELECT_H_
 
-#include "server/zone/packets/MessageCallback.h"
+#include "../MessageCallback.h"
 
 class ObjectMenuSelectCallback : public MessageCallback {
 	uint64 objectID;
@@ -25,9 +25,9 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> player = cast<CreatureObject*>(client->getPlayer().get().get());
 
-		if (player != nullptr) {
+		if (player != NULL) {
 			RadialManager* radialManager = server->getZoneServer()->getRadialManager();
 			radialManager->handleObjectMenuSelect(player, radialID, objectID);
 		}

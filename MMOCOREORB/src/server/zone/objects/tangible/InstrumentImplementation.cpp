@@ -8,181 +8,140 @@
 #include "server/zone/objects/tangible/Instrument.h"
 #include "server/zone/objects/tangible/InstrumentObserver.h"
 #include "server/zone/objects/creature/CreatureObject.h"
-#include "server/zone/packets/object/ObjectMenuResponse.h"
 #include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/managers/object/ObjectManager.h"
 #include "server/zone/objects/cell/CellObject.h"
 #include "server/zone/objects/structure/StructureObject.h"
 #include "server/zone/Zone.h"
 
-void InstrumentImplementation::fillObjectMenuResponse(ObjectMenuResponse* menuResponse, CreatureObject* player) {
-	if (instrumentType != OMNIBOX && instrumentType != NALARGON)
-		return;
-
-	if (canDropInstrument()) {
-		ManagedReference<SceneObject*> parent = getParentRecursively(SceneObjectType::PLAYERCREATURE);
-
-		if (parent != nullptr && parent == player->asSceneObject())
-			menuResponse->addRadialMenuItem(20, 3, "@ui_radial:item_use");
-	} else {
-		if (spawnerPlayer != nullptr && spawnerPlayer == player) {
-			if (!player->isPlayingMusic())
-				menuResponse->addRadialMenuItem(20, 3, "@radial_performance:play_instrument");
-			else
-				menuResponse->addRadialMenuItem(20, 3, "@radial_performance:stop_playing");
-		}
-	}
-
-	TangibleObjectImplementation::fillObjectMenuResponse(menuResponse, player);
-}
-
-void InstrumentImplementation::notifyLoadFromDatabase() {
-	TangibleObjectImplementation::notifyLoadFromDatabase();
-
-	beingUsed = false;
-
-	Reference<SceneObject* > spawnedObject = this->spawnedObject;
-
-	if (spawnedObject != nullptr) {
-		Core::getTaskManager()->executeTask( [spawnedObject] () {
-			Locker locker(spawnedObject);
-
-			spawnedObject->destroyObjectFromWorld(false);
-		}, "DespawnInstrumentLambda");
-	}
-}
-
-
-int InstrumentImplementation::handleObjectMenuSelect(CreatureObject* player, byte selectedID) {
-	if (instrumentType != OMNIBOX && instrumentType != NALARGON)
-		return 1;
-
-	if (selectedID != 20)
-		return 1;
-
-	if (canDropInstrument()) {
-		ManagedReference<SceneObject*> parent = getParentRecursively(SceneObjectType::PLAYERCREATURE);
-
-		if (parent == nullptr || parent != player->asSceneObject())
-			return 1;
-
-		if (player->isSkillAnimating()) {
-			player->sendSystemMessage("@performance:music_fail"); // You are unable to do that at this time.
-			return 1;
-		}
-
-		SortedVector<ManagedReference<Observer* > > observers = player->getObservers(ObserverEventType::POSITIONCHANGED);
-
-		for (int i = 0; i < observers.size(); ++i) {
-			InstrumentObserver* observer = dynamic_cast<InstrumentObserver*>(observers.get(i).get());
-
-			if (observer != nullptr) {
-				ManagedReference<Instrument*> oldInstrument = observer->getInstrument().get();
-
-				if (oldInstrument != nullptr) {
-					Locker locker(oldInstrument);
-					oldInstrument->destroyObjectFromWorld(true);
-					player->dropObserver(ObserverEventType::POSITIONCHANGED, observer);
-					player->dropObserver(ObserverEventType::OBJECTREMOVEDFROMZONE, observer);
-				}
-			}
-		}
-
-		ManagedReference<SceneObject*> playerParent = player->getParent().get();
-
-		if (playerParent != nullptr) {
-			if (!playerParent->isCellObject()) {
-				return 1;
-			} else {
-				CellObject* cell = playerParent.castTo<CellObject*>();
-
-				StructureObject* structureObject = dynamic_cast<StructureObject*>(cell->getParent().get().get());
-
-				if (structureObject == nullptr)
-					return 1;
-
-				if (!structureObject->isOnAdminList(player))
-					spawnNonAdmin(player);
-				else {
-					spawnInAdminCell(player);
-				}
-			}
-		} else {
-			spawnNonAdmin(player);
-		}
-	} else {
-		if (getZone() == nullptr)
-			return 1;
-
-		if (spawnerPlayer == nullptr || spawnerPlayer != player)
-			return 1;
-
-		if (player->isPlayingMusic()) {
-			player->executeObjectControllerAction(STRING_HASHCODE("stopmusic"), getObjectID(), "");
-		} else {
-
-			Reference<Instrument*> instrument = player->getSlottedObject("hold_r").castTo<Instrument*>();
-
-			if (instrument != nullptr) {
-				player->sendSystemMessage("@performance:music_must_unequip");
-				return 1;
-			}
-
-			Reference<PlayerObject*> ghost = player->getSlottedObject("ghost").castTo<PlayerObject*>();
-
-			if (ghost == nullptr)
-				return 1;
-
-			if (!ghost->hasAbility("startmusic")) {
-				player->sendSystemMessage("@performance:music_lack_skill_instrument");
-				return 1;
-			}
-
-			if (player->getDistanceTo(_this.getReferenceUnsafeStaticCast()) >= 5) {
-				player->sendSystemMessage("@elevator_text:too_far");
-			} else
-				player->executeObjectControllerAction(STRING_HASHCODE("startmusic"), getObjectID(), "");
-		}
-	}
-
-	return 0;
-}
-
 bool InstrumentImplementation::canDropInstrument() {
 	ManagedReference<SceneObject*> parent = getParent().get();
 
-	if (isInQuadTree() || (parent != nullptr && parent->isCellObject()))
+	if (isInQuadTree() || (parent != NULL && parent->isCellObject()))
 		return false;
 
 	return true;
 }
 
-void InstrumentImplementation::spawnNonAdmin(CreatureObject* player) {
-	if (spawnedObject == nullptr) {
-		spawnedObject = ObjectManager::instance()->createObject(serverObjectCRC, 0, "sceneobjects");
+int InstrumentImplementation::handleObjectMenuSelect(CreatureObject* player, byte selectedID) {
+	if (instrumentType != OMNIBOX && instrumentType != NALARGON) {
+		return 1;
 	}
 
-	if (spawnedObject->getZone() == nullptr) {
-		Instrument* instrument = spawnedObject.castTo<Instrument*>();
+	if (selectedID == 69) {
+		if (!canDropInstrument())
+			return 1;
 
-		if (instrument == nullptr)
-			return;
+		SortedVector<ManagedReference<Observer* > > observers = player->getObservers(ObserverEventType::POSITIONCHANGED);
+
+		for (int i = 0; i < observers.size(); ++i) {
+			Observer* observer = observers.get(i);
+
+			if (dynamic_cast<InstrumentObserver*>(observer) != NULL) {
+				//couldnt find stringi
+				player->sendSystemMessage("You already dropped an instrument");
+				return 1;
+			}
+		}
+
+		ManagedReference<SceneObject*> playerParent = player->getParent();
+
+		if (playerParent != NULL) {
+			if (!playerParent->isCellObject()) {
+				return 1;
+			} else {
+				CellObject* cell = cast<CellObject*>( playerParent.get());
+
+				StructureObject* structureObject = dynamic_cast<StructureObject*>(cell->getParent().get().get());
+
+				if (structureObject == NULL)
+					return 1;
+
+				if (!structureObject->isOnAdminList(player))
+					spawnInForeignCell(player);
+				else {
+					spawnInAdminCell(player);
+				}
+			}
+		} else {
+			spawnOutside(player);
+		}
+
+	} else if (selectedID == 20) {
+		if (getZone() == NULL)
+			return 1;
+
+		Reference<Instrument*> instrument = player->getSlottedObject("hold_r").castTo<Instrument*>();
+
+		if (instrument != NULL) {
+			player->sendSystemMessage("@performance:music_must_unequip");
+			return 1;
+		}
+
+		Reference<PlayerObject*> ghost = player->getSlottedObject("ghost").castTo<PlayerObject*>();
+
+		if (ghost == NULL)
+			return 1;
+
+		if (!ghost->hasAbility("startmusic")) {
+			player->sendSystemMessage("@performance:music_lack_skill_instrument");
+			return 1;
+		}
+
+		if (player->getDistanceTo(_this.getReferenceUnsafeStaticCast()) >= 5) {
+			player->sendSystemMessage("@elevator_text:too_far");
+		} else
+			player->executeObjectControllerAction(STRING_HASHCODE("startmusic"), getObjectID(), "");
+	}
+
+	return 0;
+}
+
+void InstrumentImplementation::spawnInForeignCell(CreatureObject* player) {
+	if (spawnedObject == NULL) {
+		spawnedObject = ObjectManager::instance()->createObject(serverObjectCRC, 0, "sceneobjects");
+		spawnedObject->setParent(NULL);
+		spawnedObject->setZone(NULL);
+	}
+
+	if (spawnedObject->getZone() == NULL) {
+		Instrument* instrument = cast<Instrument*>( spawnedObject.get());
 
 		Locker locker(instrument);
 
 		instrument->initializePosition(player->getPositionX(), player->getPositionZ(), player->getPositionY());
 		instrument->setSpawnerPlayer(player);
 
-		ManagedReference<SceneObject*> parent = player->getParent().get();
-		Zone* zone = player->getZone();
+		player->getParent().get()->transferObject(instrument, -1);
+		//instrument->insertToZone(player->getZone());
+		//player->getZone()->transferObject(instrument, -1, true);
 
-		if (parent != nullptr) {
-			parent->transferObject(instrument, -1);
-		} else if (zone != nullptr) {
-			zone->transferObject(instrument, -1, true);
-		} else {
-			return;
-		}
+		ManagedReference<InstrumentObserver*> posObserver = new InstrumentObserver(instrument);
+		player->registerObserver(ObserverEventType::POSITIONCHANGED, posObserver);
+		player->registerObserver(ObserverEventType::OBJECTREMOVEDFROMZONE, posObserver);
+	} else {
+		spawnedObject->teleport(player->getPositionX(), player->getPositionZ(), player->getPositionY(), player->getParentID());
+	}
+
+	spawnerPlayer = player;
+}
+
+void InstrumentImplementation::spawnOutside(CreatureObject* player) {
+	if (spawnedObject == NULL) {
+		spawnedObject = ObjectManager::instance()->createObject(serverObjectCRC, 0, "sceneobjects");
+		spawnedObject->setParent(NULL);
+		spawnedObject->setZone(NULL);
+	}
+
+	if (spawnedObject->getZone() == NULL) {
+		Instrument* instrument = cast<Instrument*>( spawnedObject.get());
+
+		Locker locker(instrument);
+
+		instrument->initializePosition(player->getPositionX(), player->getPositionZ(), player->getPositionY());
+		instrument->setSpawnerPlayer(player);
+		//instrument->insertToZone(player->getZone());
+		player->getZone()->transferObject(instrument, -1, true);
 
 		ManagedReference<InstrumentObserver*> posObserver = new InstrumentObserver(instrument);
 		player->registerObserver(ObserverEventType::POSITIONCHANGED, posObserver);
@@ -202,11 +161,10 @@ void InstrumentImplementation::spawnInAdminCell(CreatureObject* player) {
 
 	player->executeObjectControllerAction(STRING_HASHCODE("transferitemmisc"), _this.getReferenceUnsafeStaticCast()->getObjectID(), uni);
 
-	spawnerPlayer = nullptr;
+	spawnerPlayer = NULL;
 
-	if (spawnedObject != nullptr) {
-		Locker locker(spawnedObject);
+	if (spawnedObject != NULL) {
 		spawnedObject->destroyObjectFromWorld(true);
-		spawnedObject = nullptr;
+		spawnedObject = NULL;
 	}
 }

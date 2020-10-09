@@ -1,20 +1,16 @@
 
 #include "server/zone/objects/tangible/deed/eventperk/EventPerkDeed.h"
-#include "server/zone/objects/tangible/tasks/RemoveEventPerkDeedTask.h"
+#include "server/zone/objects/tangible/tasks/RemoveEventPerkTask.h"
 #include "server/zone/objects/tangible/components/EventPerkDataComponent.h"
 #include "server/zone/Zone.h"
-#include "server/zone/ZoneProcessServer.h"
 #include "server/zone/objects/creature/CreatureObject.h"
-#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/region/CityRegion.h"
 #include "server/zone/objects/area/ActiveArea.h"
-#include "server/zone/objects/structure/StructureObject.h"
-#include "templates/tangible/EventPerkDeedTemplate.h"
+#include "server/zone/templates/tangible/EventPerkDeedTemplate.h"
 #include "server/zone/packets/object/ObjectMenuResponse.h"
 #include "server/zone/managers/planet/PlanetManager.h"
 #include "server/zone/managers/structure/StructureManager.h"
-#include "terrain/manager/TerrainManager.h"
-#include "server/zone/managers/name/NameManager.h"
+#include "server/zone/managers/terrain/TerrainManager.h"
 
 void EventPerkDeedImplementation::initializeTransientMembers() {
 	DeedImplementation::initializeTransientMembers();
@@ -26,10 +22,9 @@ void EventPerkDeedImplementation::loadTemplateData(SharedObjectTemplate* templat
 	DeedImplementation::loadTemplateData(templateData);
 	EventPerkDeedTemplate* deedData = dynamic_cast<EventPerkDeedTemplate*>(templateData);
 
-	if (deedData == nullptr)
+	if (deedData == NULL)
 		return;
 
-	generatedTimeToLive = deedData->getGeneratedTimeToLive();
 	perkType = deedData->getPerkType();
 }
 
@@ -42,15 +37,12 @@ void EventPerkDeedImplementation::fillAttributeList(AttributeListMessage* alm, C
 void EventPerkDeedImplementation::fillObjectMenuResponse(ObjectMenuResponse* menuResponse, CreatureObject* player) {
 	DeedImplementation::fillObjectMenuResponse(menuResponse, player);
 
-	if (isASubChildOf(player)) {
+	if(isASubChildOf(player)) {
 		menuResponse->addRadialMenuItem(20, 3, "@event_perk:use_event_perk"); // Deploy Rental
 	}
 }
 
 int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, byte selectedID) {
-	if (!isASubChildOf(player)) {
-		return 1;
-	}
 
 	if (selectedID == 20) {
 		if (generated) {
@@ -59,17 +51,17 @@ int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, 
 
 		Zone* zone = player->getZone();
 
-		if (zone == nullptr) {
+		if (zone == NULL) {
 			return 1;
 		}
 
 		PlanetManager* planetManager = zone->getPlanetManager();
-		if (planetManager == nullptr) {
+		if (planetManager == NULL) {
 			return 1;
 		}
 
 		EventPerkDeedTemplate* deedTemplate = cast<EventPerkDeedTemplate*>(getObjectTemplate());
-		if (deedTemplate == nullptr) {
+		if (deedTemplate == NULL) {
 			return 1;
 		}
 
@@ -90,7 +82,7 @@ int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, 
 
 		ManagedReference<SceneObject*> parent = player->getParent().get();
 
-		if (parent != nullptr && parent->isCellObject()) {
+		if (parent != NULL && parent->isCellObject()) {
 			player->sendSystemMessage("@event_perk:not_inside"); // You cannot deploy a Rental indoors. You must move outside.
 			return 1;
 		}
@@ -107,7 +99,7 @@ int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, 
 
 		ManagedReference<CityRegion*> city = player->getCityRegion().get();
 
-		if (city != nullptr) {
+		if (city != NULL) {
 			if (city->isClientRegion()) {
 				player->sendSystemMessage("@event_perk:not_in_municipal_zone"); // You may not place a Rental in a municipal zone.
 				return 1;
@@ -124,32 +116,30 @@ int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, 
 		int nearbyPerks = 0;
 
 		TerrainManager* terrainManager = planetManager->getTerrainManager();
-		if ( terrainManager == nullptr || terrainManager->getHighestHeightDifference(x - 10, y - 10, x + 10, y + 10) > 15.0) {
+		if ( terrainManager == NULL || terrainManager->getHighestHeightDifference(x - 10, y - 10, x + 10, y + 10) > 15.0) {
 			player->sendSystemMessage("@event_perk:bad_area"); // This rental could not be deployed due to the surrounding terrain. Please move to another area and try again.
 			return 1;
 		}
 
 		CloseObjectsVector* vec = (CloseObjectsVector*) player->getCloseObjects();
 
-		if (vec == nullptr) {
-#ifdef COV_DEBUG
-			error("Player has nullptr closeObjectsVector in EventPerkDeedImplementation::handleObjectMenuSelect");
-#endif
+		if (vec == NULL) {
+			error("Player has NULL closeObjectsVector in EventPerkDeedImplementation::handleObjectMenuSelect");
 			return 1;
 		}
 
-		SortedVector<QuadTreeEntry*> closeObjects;
+		SortedVector<ManagedReference<QuadTreeEntry* > > closeObjects;
 		vec->safeCopyTo(closeObjects);
 
 		for (int i = 0; i < closeObjects.size(); ++i) {
-			SceneObject* obj = cast<SceneObject*>(closeObjects.get(i));
+			SceneObject* obj = cast<SceneObject*>(closeObjects.get(i).get());
 
-			if (obj == nullptr) {
+			if (obj == NULL) {
 				continue;
 			}
 
 			SharedObjectTemplate* objectTemplate = obj->getObjectTemplate();
-			if (objectTemplate == nullptr) {
+			if (objectTemplate == NULL) {
 				continue;
 			}
 
@@ -200,12 +190,17 @@ int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, 
 			return 1;
 		}
 
+		if (perkType != EventPerkDeedTemplate::STATIC) {
+			player->sendSystemMessage("This type of event perk deed is not functional yet.");
+			return 1;
+		}
+
 		ManagedReference<TangibleObject*> object = generatedObject.get();
 
-		if (object == nullptr) {
+		if (object == NULL) {
 			object = (server->getZoneServer()->createObject(generatedObjectTemplate.hashCode(), "playerstructures", 1)).castTo<TangibleObject*>();
 
-			if (object == nullptr) {
+			if (object == NULL) {
 				player->sendSystemMessage("Error generating object. Wrong generatedObjectTemplate or is not a tangible object.");
 				return 1;
 			}
@@ -217,7 +212,7 @@ int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, 
 
 		EventPerkDataComponent* data = cast<EventPerkDataComponent*>(object->getDataObjectComponent()->get());
 
-		if (data == nullptr) {
+		if (data == NULL) {
 			player->sendSystemMessage("Error: no dataObjectComponent.");
 			object->destroyObjectFromDatabase(true);
 			return 1;
@@ -226,32 +221,10 @@ int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, 
 		data->setDeed(_this.getReferenceUnsafeStaticCast());
 
 		object->initializePosition(player->getPositionX(), player->getPositionZ(), player->getPositionY());
-
 		object->setDirection(Math::deg2rad(player->getDirectionAngle()));
-
 		zone->transferObject(object, -1, true);
 
-		object->createChildObjects();
-		parseChildObjects(object);
-
-		// object/tangible/event_perk/race_droid.iff
-		// Values stored using setLuaStringData because the perk is handled from lua
-		if (object->getServerObjectCRC() == 0x785C60BF) {
-			object->setLuaStringData("ownerID", String::valueOf(player->getObjectID()));
-		}
-
 		generated = true;
-
-		if (removeEventPerkDeedTask != nullptr && generatedTimeToLive > 0) {
-			Time currentTime;
-			uint64 timeDelta = currentTime.getMiliTime() - purchaseTime.getMiliTime();
-
-			if (timeDelta >= generatedTimeToLive)
-				removeEventPerkDeedTask->execute();
-			else
-				removeEventPerkDeedTask->reschedule(generatedTimeToLive - timeDelta);
-		}
-
 		destroyObjectFromWorld(true);
 
 		return 0;
@@ -260,96 +233,15 @@ int EventPerkDeedImplementation::handleObjectMenuSelect(CreatureObject* player, 
 	return DeedImplementation::handleObjectMenuSelect(player, selectedID);
 }
 
-void EventPerkDeedImplementation::parseChildObjects(SceneObject* parent) {
-	EventPerkDataComponent* data = cast<EventPerkDataComponent*>(parent->getDataObjectComponent()->get());
-
-	if (data == nullptr)
-		return;
-
-	EventPerkDeed* deed = data->getDeed();
-
-	if (deed == nullptr)
-		return;
-
-	int perkType = getPerkType();
-
-	SortedVector<ManagedReference<SceneObject*> >* children = parent->getChildObjects();
-
-	for (int j = 0; j < children->size(); j++) {
-		SceneObject* child = children->get(j);
-
-		if (child != nullptr)	{
-			Locker cLock(child, parent);
-
-			ContainerPermissions* permissions = child->getContainerPermissionsForUpdate();
-			permissions->setOwner(parent->getObjectID());
-			permissions->setInheritPermissionsFromParent(false);
-			permissions->setDefaultDenyPermission(ContainerPermissions::MOVECONTAINER);
-			permissions->setDenyPermission("owner", ContainerPermissions::MOVECONTAINER);
-
-			if (perkType == EventPerkDeedTemplate::HONORGUARD || perkType == EventPerkDeedTemplate::RECRUITER)
-				child->setObjectMenuComponent("EventPerkMenuComponent");
-
-			if (child->getServerObjectCRC() == 0xB2EC90B2) { // object/mobile/dressed_stormtrooper_m.iff
-				int randNum = 100 + System::random(899);
-				child->setCustomObjectName("TK-" + String::valueOf(randNum), true);
-			} else if (child->getServerObjectCRC() == 0x3AADC9C4) { // object/mobile/dressed_tie_fighter_m.iff
-				int randNum = 100 + System::random(899);
-				child->setCustomObjectName("DS-" + String::valueOf(randNum), true);
-			} else if (child->getServerObjectCRC() == 0xD5985A18) { // object/mobile/atat.iff
-				child->setCustomObjectName("AT-AT", true);
-			} else if (child->getServerObjectCRC() == 0x55898ADF) { // object/mobile/atst.iff
-				child->setCustomObjectName("AT-ST", true);
-			} else if (child->getServerObjectCRC() == 0xCF9AC86C) { // object/mobile/bantha_saddle.iff
-				child->setCustomObjectName("a bantha mount", true);
-			} else if (child->getObjectTemplate()->getFullTemplateString().indexOf("object/mobile") != -1 && perkType != EventPerkDeedTemplate::RECRUITER) {
-				ZoneProcessServer* zps = parent->getZoneProcessServer();
-				NameManager* nameManager = zps->getNameManager();
-				String name = "";
-				if (child->getServerObjectCRC() == 0xA87E2035) { // object/mobile/cll8_binary_load_lifter.iff
-					name = "a CLL-8 binary load lifter";
-				} else if (child->getServerObjectCRC() == 0xF1DED7AD) { // object/mobile/eg6_power_droid.iff
-					name = nameManager->makeDroidName(NameManagerType::DROID_EG6);
-				} else if (child->getServerObjectCRC() == 0x6C1D79FD) { // object/mobile/r2.iff
-					name = nameManager->makeDroidName(NameManagerType::R2);
-				} else if (child->getServerObjectCRC() == 0x25101E70) { // object/mobile/r3.iff
-					name = nameManager->makeDroidName(NameManagerType::R3);
-				} else if (child->getServerObjectCRC() == 0xDEF33564) { // object/mobile/r4.iff
-					name = nameManager->makeDroidName(NameManagerType::R4);
-				} else if (child->getServerObjectCRC() == 0x97FE52E9) { // object/mobile/r5.iff
-					name = nameManager->makeDroidName(NameManagerType::R5);
-				} else if (child->getServerObjectCRC() == 0x905BB76C) { // object/mobile/ra7_bug_droid.iff
-					name = nameManager->makeDroidName(NameManagerType::DROID_RA7);
-				} else {
-					name = nameManager->makeCreatureName();
-
-					if (child->getServerObjectCRC() == 0x63371470) // object/mobile/dressed_corsec_officer_human_male_01.iff
-						name = name + " (a CorSec trooper)";
-					else if (child->getServerObjectCRC() == 0x86752E27) // object/mobile/dressed_fed_dub_patrolman_human_male_01.iff
-						name = name + " (a Fed-Dub patrolman)";
-					else if (child->getServerObjectCRC() == 0x450C04C9) // object/mobile/dressed_rebel_crewman_human_male_01.iff
-						name = name + " (a Rebel crewman)";
-					else if (child->getServerObjectCRC() == 0xF171DF10) // object/mobile/dressed_rsf_security_guard.iff
-						name = name + " (an RSF security guard)";
-					else if (child->getServerObjectCRC() == 0x7BD5CF73) // object/mobile/jawa.iff
-						name = name + " (a jawa)";
-				}
-
-				child->setCustomObjectName(name, true);
-			}
-		}
-	}
-}
-
 void EventPerkDeedImplementation::destroyObjectFromDatabase(bool destroyContainedObjects) {
 	ManagedReference<CreatureObject*> strongOwner = owner.get();
 
-	if (strongOwner != nullptr) {
+	if (strongOwner != NULL) {
 		Locker clocker(strongOwner, _this.getReferenceUnsafeStaticCast());
 
 		PlayerObject* ghost = strongOwner->getPlayerObject();
 
-		if (ghost != nullptr) {
+		if (ghost != NULL) {
 			ghost->removeEventPerk(_this.getReferenceUnsafeStaticCast());
 		}
 	}
@@ -358,32 +250,28 @@ void EventPerkDeedImplementation::destroyObjectFromDatabase(bool destroyContaine
 }
 
 void EventPerkDeedImplementation::activateRemoveEvent(bool immediate) {
-	uint64 timeToLive = EventPerkDeedTemplate::TIME_TO_LIVE;
-
-	if (generated && generatedTimeToLive > 0)
-		timeToLive = generatedTimeToLive;
-
-	if (removeEventPerkDeedTask == nullptr) {
-		removeEventPerkDeedTask = new RemoveEventPerkDeedTask(_this.getReferenceUnsafeStaticCast());
+	if (removeEventPerkTask == NULL) {
+		removeEventPerkTask = new RemoveEventPerkTask(_this.getReferenceUnsafeStaticCast());
 
 		Time currentTime;
 		uint64 timeDelta = currentTime.getMiliTime() - purchaseTime.getMiliTime();
 
-		if (timeDelta >= timeToLive || immediate) {
-			removeEventPerkDeedTask->execute();
+		if (timeDelta >= EventPerkDeedTemplate::TIME_TO_LIVE || immediate) {
+			removeEventPerkTask->execute();
 		} else {
-			removeEventPerkDeedTask->schedule(timeToLive - timeDelta);
+			removeEventPerkTask->schedule(EventPerkDeedTemplate::TIME_TO_LIVE - timeDelta);
 		}
 	} else if (immediate) {
-		if (removeEventPerkDeedTask->isScheduled()) {
-			removeEventPerkDeedTask->reschedule(1);
+		if (removeEventPerkTask->isScheduled()) {
+			removeEventPerkTask->reschedule(1);
 		} else {
-			removeEventPerkDeedTask->execute();
+			removeEventPerkTask->execute();
 		}
 	}
 }
 
 String EventPerkDeedImplementation::getDurationString() {
+
 	Time currentTime;
 	uint32 timeDelta = currentTime.getMiliTime() - purchaseTime.getMiliTime();
 	uint32 timestamp = (EventPerkDeedTemplate::TIME_TO_LIVE - timeDelta) / 1000;

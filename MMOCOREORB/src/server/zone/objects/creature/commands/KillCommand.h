@@ -6,6 +6,7 @@
 #define KILLCOMMAND_H_
 
 #include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/managers/creature/CreatureManager.h"
 
 class KillCommand : public QueueCommand {
 public:
@@ -23,17 +24,23 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
+		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
+
+		//Check privileges
+		if (ghost == NULL || !ghost->isPrivileged())
+			return INSUFFICIENTPERMISSION;
+
 		//Explain syntax
 		if (arguments.isEmpty() && creature->getTargetID() == 0) {
 			creature->sendSystemMessage("Syntax: /kill [-area [range]] [<health> [action] [mind]]");
 			return GENERALERROR;
 		}
 
-		ManagedReference<CreatureObject*> targetCreature = nullptr;
-		ManagedReference<TangibleObject*> targetLair = nullptr;
+		ManagedReference<CreatureObject*> targetCreature = NULL;
+		ManagedReference<TangibleObject*> targetLair = NULL;
 		ManagedReference<SceneObject*> targetObject = server->getZoneServer()->getObject(target);
 
-		if (targetObject != nullptr) {
+		if (targetObject != NULL) {
 			if (targetObject->isCreatureObject())
 				targetCreature = cast<CreatureObject*>(targetObject.get());
 			else if (targetObject->isTangibleObject())
@@ -139,22 +146,20 @@ public:
 		//Deal area damage if specified
 		if (area) {
 			//Retrieve nearby objects
-			SortedVector<QuadTreeEntry*> closeObjects;
+			SortedVector<ManagedReference<QuadTreeEntry*> > closeObjects;
 			Zone* zone = creature->getZone();
 
-			if (creature->getCloseObjects() == nullptr) {
-#ifdef COV_DEBUG
+			if (creature->getCloseObjects() == NULL) {
 				creature->info("Null closeobjects vector in KillCommand::doQueueCommand", true);
-#endif
 				zone->getInRangeObjects(creature->getPositionX(), creature->getPositionY(), range, &closeObjects, true);
 			}
 			else {
 				CloseObjectsVector* closeVector = (CloseObjectsVector*) creature->getCloseObjects();
-				closeVector->safeCopyReceiversTo(closeObjects, CloseObjectsVector::CREOTYPE);
+				closeVector->safeCopyTo(closeObjects);
 			}
 
 			for (int i = 0; i < closeObjects.size(); i++) {
-				SceneObject* targetObject = static_cast<SceneObject*>(closeObjects.get(i));
+				SceneObject* targetObject = cast<SceneObject*>(closeObjects.get(i).get());
 				if (targetObject->isCreatureObject()) {
 					targetCreature = cast<CreatureObject*>(targetObject);
 
@@ -173,7 +178,7 @@ public:
 		//Deal damage to selected target
 		else {
 			//Deal damage if target is not a player or pet
-			if (targetCreature != nullptr) {
+			if (targetCreature != NULL) {
 				if (!targetCreature->isPlayerCreature() && !targetObject->isPet()) {
 					Locker locker(targetCreature, creature);
 
@@ -184,7 +189,7 @@ public:
 				}
 			}
 			//Deal damage if target is a lair
-			else if (targetLair != nullptr) {
+			else if (targetLair != NULL) {
 				Locker locker(targetLair, creature);
 
 				targetLair->inflictDamage(creature, 0, healthDamage, true, true);

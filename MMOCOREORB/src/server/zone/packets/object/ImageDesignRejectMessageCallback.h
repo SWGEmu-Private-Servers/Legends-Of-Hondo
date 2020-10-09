@@ -1,5 +1,5 @@
 /*
- * ImageDesignRejectMessageCallback.h
+ * ImageDesignMessageCallback.h
  *
  *  Created on: 02/02/2011
  *      Author: Polonel
@@ -9,6 +9,7 @@
 #define IMAGEDESIGNREJECTMESSAGECALLBACK_H_
 
 #include "ObjectControllerMessageCallback.h"
+#include "ImageDesignMessage.h"
 #include "server/zone/objects/player/sessions/ImageDesignSession.h"
 
 class ImageDesignRejectMessageCallback : public MessageCallback {
@@ -38,15 +39,15 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> player = static_cast<CreatureObject*>(client->getPlayer().get().get());
 
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
 		ManagedReference<Facade*> facade = player->getActiveSession(SessionFacadeType::IMAGEDESIGN);
 		ManagedReference<ImageDesignSession*> session = dynamic_cast<ImageDesignSession*>(facade.get());
 
-		if (session == nullptr)
+		if (session == NULL)
 			return;
 
 		session->cancelImageDesign(designer, target, tent, type, data);

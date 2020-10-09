@@ -5,7 +5,7 @@
 #ifndef GUILDRESPONSEMESSAGE_H_
 #define GUILDRESPONSEMESSAGE_H_
 
-#include "engine/service/proto/BaseMessage.h"
+#include "engine/engine.h"
 #include "server/zone/objects/guild/GuildObject.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 
@@ -17,9 +17,9 @@ public:
         
 		insertLong(creo->getObjectID()); //Object Id to set guild for
 
-		ManagedReference<GuildObject*> guild = creo->getGuildObject().get();
+		ManagedReference<GuildObject*> guild = creo->getGuildObject();
 		
-		if (guild == nullptr)
+		if (guild == NULL)
 			insertAscii("");
 		else
 			insertAscii(guild->getGuildName());

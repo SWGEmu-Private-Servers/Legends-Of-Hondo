@@ -6,26 +6,15 @@
 #define DISMOUNTCOMMAND_H_
 
 #include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/objects/creature/VehicleObject.h"
 #include "server/zone/objects/intangible/ControlDevice.h"
-#include "templates/creature/SharedCreatureObjectTemplate.h"
+#include "server/zone/templates/tangible/SharedCreatureObjectTemplate.h"
 
 class DismountCommand : public QueueCommand {
-	Vector<uint32> restrictedBuffCRCs;
-	uint32 gallopCRC;
-
 public:
 
 	DismountCommand(const String& name, ZoneProcessServer* server)
 		: QueueCommand(name, server) {
-
-		gallopCRC = STRING_HASHCODE("gallop");
-
-		restrictedBuffCRCs.add(gallopCRC); // Remove the old buff off of any players on dismount
-		restrictedBuffCRCs.add(STRING_HASHCODE("burstrun"));
-		restrictedBuffCRCs.add(STRING_HASHCODE("retreat"));
-		restrictedBuffCRCs.add(BuffCRC::JEDI_FORCE_RUN_1);
-		restrictedBuffCRCs.add(BuffCRC::JEDI_FORCE_RUN_2);
-		restrictedBuffCRCs.add(BuffCRC::JEDI_FORCE_RUN_3);
 
 	}
 
@@ -37,10 +26,11 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
-		ManagedReference<SceneObject*> mount = creature->getParent().get();
+		ManagedReference<SceneObject*> mount = creature->getParent();
 
-		if (mount == nullptr || !mount->isCreatureObject()) {
+		if (mount == NULL || !mount->isCreatureObject()) {
 			creature->clearState(CreatureState::RIDINGMOUNT);
+
 			return GENERALERROR;
 		}
 
@@ -48,7 +38,7 @@ public:
 			return GENERALERROR;
 		}
 
-		CreatureObject* vehicle = cast<CreatureObject*>(mount.get());
+		CreatureObject* vehicle = cast<CreatureObject*>( mount.get());
 
 		Locker clocker(vehicle, creature);
 
@@ -62,20 +52,24 @@ public:
 		if (vehicle != creature->getParent().get())
 			return GENERALERROR;
 
-		if (zone == nullptr)
+		if (zone == NULL)
 			return GENERALERROR;
 
 		ManagedReference<PlanetManager*> planetManager = zone->getPlanetManager();
 
-		if (planetManager == nullptr)
+		if (planetManager == NULL)
 			return GENERALERROR;
 
-		TerrainManager* terrainManager = planetManager->getTerrainManager();
+		ManagedReference<TerrainManager*> terrainManager = planetManager->getTerrainManager();
 
-		if (terrainManager == nullptr)
+		if (terrainManager == NULL)
 			return GENERALERROR;
+
+		creature->removeMountedCombatSlow();
 
 		zone->transferObject(creature, -1, false);
+
+		clocker.release();
 
 		IntersectionResults intersections;
 		CollisionManager::getWorldFloorCollisions(creature->getPositionX(), creature->getPositionY(), zone, &intersections, (CloseObjectsVector*) creature->getCloseObjects());
@@ -83,23 +77,37 @@ public:
 
 		creature->teleport(creature->getPositionX(), z, creature->getPositionY(), 0);
 
-		clocker.release(); // Buff needs to be locked below
+		if (creature->hasBuff(STRING_HASHCODE("burstrun"))
+				|| creature->hasBuff(STRING_HASHCODE("retreat"))) {
+			//Clear the active negation of the burst run or retreat buff.
+			creature->setSpeedMultiplierMod(1.f);
+			creature->setAccelerationMultiplierMod(1.f);
+		}
 
-		//reapply speed buffs if they exist
-		for (int i=0; i<restrictedBuffCRCs.size(); i++) {
+		unsigned int crc = STRING_HASHCODE("gallop");
+		if (creature->hasBuff(crc)) {
+			ManagedReference<Buff*> buff = creature->getBuff(crc);
 
-			uint32 buffCRC = restrictedBuffCRCs.get(i);
-
-			if (creature->hasBuff(buffCRC)) {
-				ManagedReference<Buff*> buff = creature->getBuff(buffCRC);
-				if(buff != nullptr) {
-					Locker lock(buff, creature);
-					buff->applyAllModifiers();
-				}
+			if (buff != NULL) {
+				//Negate effect of the active gallop buff. The negation will be cleared automatically when the buff is deactivated.
+				creature->setSpeedMultiplierMod(1.f / buff->getSpeedMultiplierMod());
+				creature->setAccelerationMultiplierMod(1.f / buff->getAccelerationMultiplierMod());
 			}
 		}
 
-		Locker storeLocker(vehicle, creature); // Yet another locker for jetpack storage below
+		Locker vehicleLocker(vehicle, creature);
+
+		if (vehicle->hasBuff(crc)) {
+			ManagedReference<Buff*> buff = creature->getBuff(crc);
+
+			if (buff != NULL) {
+				//Negate effect of the active gallop buff. The negation will be cleared automatically when the buff is deactivated.
+				vehicle->setSpeedMultiplierMod(1.f / buff->getSpeedMultiplierMod());
+				vehicle->setAccelerationMultiplierMod(1.f / buff->getAccelerationMultiplierMod());
+			}
+		}
+
+		vehicleLocker.release();
 
 		creature->clearState(CreatureState::RIDINGMOUNT);
 
@@ -116,38 +124,22 @@ public:
 
 		playerManager->updateSwimmingState(creature, z);
 
-		ManagedReference<ControlDevice*> device = vehicle->getControlDevice().get();
-
-		if (device != nullptr && vehicle->getServerObjectCRC() == 0x32F87A54) { // Auto-store jetpack on dismount.
+		ManagedReference<ControlDevice*> device = vehicle->getControlDevice();
+		
+		if (device != NULL && vehicle->getServerObjectCRC() == 0x32F87A54) // Auto-store jetpack on dismount.
 			device->storeObject(creature);
-			creature->sendSystemMessage("@pet/pet_menu:jetpack_dismount"); // "You have been dismounted from the jetpack, and it has been stored."
-		}
-
+		
 		creature->updateToDatabase();
 
 		SharedObjectTemplate* templateData = creature->getObjectTemplate();
 		SharedCreatureObjectTemplate* playerTemplate = dynamic_cast<SharedCreatureObjectTemplate*> (templateData);
 
-		if (playerTemplate != nullptr) {
+		if (playerTemplate != NULL) {
 			Vector<FloatParam> speedTempl = playerTemplate->getSpeed();
 			creature->setRunSpeed(speedTempl.get(0));
-			creature->updateSpeedAndAccelerationMods(); // Reset Force Sensitive control mods to default.
 		}
 
 		creature->updateCooldownTimer("mount_dismount", 2000);
-
-		creature->removeMountedCombatSlow(false); // these are already removed off the player - Just remove it off the mount
-
-		if (vehicle->hasBuff(gallopCRC)) {
-			ManagedReference<Buff*> buff = vehicle->getBuff(gallopCRC);
-			if (buff != nullptr) {
-				Core::getTaskManager()->executeTask([=] () {
-					Locker lock(vehicle);
-					Locker buffLocker(buff, vehicle);
-					buff->removeAllModifiers();
-				}, "RemoveGallopModsLambda");
-			}
-		}
 
 		return SUCCESS;
 	}

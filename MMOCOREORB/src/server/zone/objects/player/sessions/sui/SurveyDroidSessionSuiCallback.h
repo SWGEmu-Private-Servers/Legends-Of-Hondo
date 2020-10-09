@@ -1,14 +1,15 @@
 /*
  * SlicingSessionSuiCallback.h
  *
- *	Created on: Mar 5, 2011
- *		Author: polonel
+ *  Created on: Mar 5, 2011
+ *      Author: polonel
  */
 
 #ifndef SURVEYDRIODCALLBACK_H_
 #define SURVEYDRIODCALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/objects/player/sessions/SlicingSession.h"
 
 class SurveyDroidSessionSuiCallback : public SuiCallback {
 public:
@@ -16,9 +17,7 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!suiBox->isListBox())
 			return;
 
@@ -28,12 +27,12 @@ public:
 		ManagedReference<Facade*> facade = player->getActiveSession(SessionFacadeType::INTERPLANETARYSURVEYDROID);
 		ManagedReference<InterplanetarySurveyDroidSession*> session = dynamic_cast<InterplanetarySurveyDroidSession*>(facade.get());
 
-		if (session == nullptr) {
+		if (session == NULL) {
 			ManagedReference<TangibleObject*> obj = cast<TangibleObject*>( suiBox->getUsingObject().get().get());
-			if (obj != nullptr) {
+			if (obj != NULL)
 				Locker crosslock(obj, player);
 				obj->dropActiveSession(SessionFacadeType::INTERPLANETARYSURVEYDROID);
-			}
+
 			return;
 		}
 

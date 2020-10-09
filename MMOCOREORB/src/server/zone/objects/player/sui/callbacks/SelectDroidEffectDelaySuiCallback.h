@@ -14,27 +14,29 @@
 
 class SelectDroidEffectDelaySuiCallback : public SuiCallback, public Logger {
 
-	Reference<DroidEffectsModuleDataComponent*> module;
+	ManagedReference<DroidEffectsModuleDataComponent*> module;
 	String effectName;
 	int slotIndex;
 
 public:
-	SelectDroidEffectDelaySuiCallback(ZoneServer* serv, DroidEffectsModuleDataComponent* module, String effectName, int slotIndex) : SuiCallback(serv) {
+	SelectDroidEffectDelaySuiCallback(ZoneServer* serv,
+								      DroidEffectsModuleDataComponent* module,
+								      String effectName,
+								      int slotIndex) : SuiCallback(serv) {
 		this->module = module;
 		this->effectName = effectName;
 		this->slotIndex = slotIndex;
 	}
 
-	void run(CreatureObject* player, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* player, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 
-		if (!sui->isInputBox() || cancelPressed || args->size() < 1 || module == nullptr)
+		if (!sui->isInputBox() || cancelPressed || args->size() < 1 || module == NULL)
 			return;
 
 		try {
 			int delay = Integer::valueOf(args->get(0).toString());
 
-			if(delay >= 3 && delay <= 60){
+			if(delay > 3 && delay <= 60){
 
 				Locker dlock( module->getDroidObject(), player );
 				module->setEffect( effectName, delay, slotIndex );

@@ -9,6 +9,7 @@
 #define CONFIRMVETERANREWARDSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/managers/stringid/StringIdManager.h"
 
 class ConfirmVeteranRewardSuiCallback : public SuiCallback {
 
@@ -18,11 +19,10 @@ public:
 
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 
 		PlayerManager* playerManager = player->getZoneServer()->getPlayerManager();
-		if( !suiBox->isMessageBox() || playerManager == nullptr )
+		if( !suiBox->isMessageBox() || playerManager == NULL )
 			return;
 
 		if( cancelPressed ){

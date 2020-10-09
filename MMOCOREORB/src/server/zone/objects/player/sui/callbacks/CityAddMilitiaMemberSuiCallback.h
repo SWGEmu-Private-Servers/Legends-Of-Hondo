@@ -34,15 +34,13 @@ public:
 		cityRegion = city;
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		ManagedReference<CityRegion*> city = cityRegion.get();
 
-		if (city == nullptr)
+		if (city == NULL)
 			return;
 
-		if (!suiBox->isInputBox() || player == nullptr || cancelPressed || args->size() <= 0) {
+		if (!suiBox->isInputBox() || player == NULL || cancelPressed || args->size() <= 0) {
 			return;
 		}
 

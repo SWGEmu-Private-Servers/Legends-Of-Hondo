@@ -5,6 +5,7 @@
 #ifndef ROLLSHOTCOMMAND_H_
 #define ROLLSHOTCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "CombatQueueCommand.h"
 
 class RollShotCommand : public CombatQueueCommand {
@@ -29,6 +30,13 @@ public:
 
 		if (creature->isDizzied() && System::random(100) < 85) {
 			creature->queueDizzyFallEvent();
+		} else {
+			creature->setPosture(CreaturePosture::CROUCHED, false);
+
+			CreatureObjectDeltaMessage3* pmsg = new CreatureObjectDeltaMessage3(creature);
+			pmsg->updatePosture();
+			pmsg->close();
+			creature->broadcastMessage(pmsg, true);
 		}
 
 		return SUCCESS;

@@ -24,37 +24,10 @@ public:
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
 
-		StringTokenizer args(arguments.toString());
+		ManagedReference<PlayerObject*> ghost = creature->getPlayerObject();
 
-		try {
-			ManagedReference<SceneObject*> obj = server->getZoneServer()->getObject(target);
-
-			if (obj == nullptr || !obj->isCreatureObject()) {
-				return INVALIDTARGET;
-			}
-
-			CreatureObject* targetCreature = cast<CreatureObject*>(obj.get());
-
-			if (targetCreature == nullptr) {
-				return INVALIDTARGET;
-			}
-
-			Locker targetLock(targetCreature, creature);
-
-			PlayerObject* ghost = targetCreature->getPlayerObject();
-
-			if (ghost == nullptr)
-				return INVALIDTARGET;
-
-			int quest = args.getIntToken();
-
-			ghost->activateQuest(quest);
-
-		} catch (Exception& e) {
-			creature->sendSystemMessage("SYNTAX: /activateQuest <quest>");
-
-			return INVALIDPARAMETERS;
-		}
+		if (ghost == NULL || !ghost->isPrivileged())
+			return INSUFFICIENTPERMISSION;
 
 		return SUCCESS;
 	}

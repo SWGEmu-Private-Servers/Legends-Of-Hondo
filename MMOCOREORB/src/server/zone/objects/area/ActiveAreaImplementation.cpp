@@ -6,18 +6,13 @@
  */
 
 #include "server/zone/objects/area/ActiveArea.h"
+#include "server/zone/objects/creature/CreatureObject.h"
 #include "events/ActiveAreaEvent.h"
+#include "server/zone/Zone.h"
 #include "server/zone/objects/area/areashapes/AreaShape.h"
 
-bool ActiveAreaImplementation::containsPoint(float px, float py, uint64 cellid) const {
-	if (cellObjectID != 0 && cellObjectID != cellid)
-		return false;
-
-	return containsPoint(px, py);
-}
-
-bool ActiveAreaImplementation::containsPoint(float px, float py) const {
-	if (areaShape == nullptr) {
+bool ActiveAreaImplementation::containsPoint(float px, float py) {
+	if (areaShape == NULL) {
 		return QuadTreeEntryImplementation::containsPoint(px, py);
 	}
 
@@ -52,52 +47,40 @@ void ActiveAreaImplementation::notifyEnter(SceneObject* obj) {
 		ManagedReference<SceneObject*> sceno = obj;
 		Vector<ManagedReference<SceneObject* > > scene = attachedScenery;
 
-		Core::getTaskManager()->executeTask([=] () {
-			for (int i = 0; i < scene.size(); i++) {
-				SceneObject* scenery = scene.get(i);
+		EXECUTE_TASK_2(scene, sceno, {
+			for (int i = 0; i < scene_p.size(); i++) {
+				SceneObject* scenery = scene_p.get(i);
 				Locker locker(scenery);
 
-				scenery->sendTo(sceno, true);
+				scenery->sendTo(sceno_p, true);
 			}
-		}, "SendSceneryLambda");
+		});
 	}
 }
 
 void ActiveAreaImplementation::notifyExit(SceneObject* obj) {
-	if (cellObjectID == 0 || cellObjectID != obj->getParentID())
+	if (cellObjectID == 0 || cellObjectID == obj->getParentID())
 		notifyObservers(ObserverEventType::EXITEDAREA, obj);
 
 	if (obj->isPlayerCreature() && attachedScenery.size() > 0) {
 		ManagedReference<SceneObject*> sceno = obj;
 		Vector<ManagedReference<SceneObject* > > scene = attachedScenery;
 
-		Core::getTaskManager()->executeTask([=] () {
-			for (int i = 0; i < scene.size(); i++) {
-				SceneObject* scenery = scene.get(i);
+		EXECUTE_TASK_2(scene, sceno, {
+			for (int i = 0; i < scene_p.size(); i++) {
+				SceneObject* scenery = scene_p.get(i);
 				Locker locker(scenery);
 
-				scenery->sendDestroyTo(sceno);
+				scenery->sendDestroyTo(sceno_p);
 			}
-		}, "SendDestroySceneryLambda");
+		});
 	}
 }
 
-void ActiveAreaImplementation::setZone(Zone* zone) {
-	this->zone = zone;
-}
-
-bool ActiveAreaImplementation::intersectsWith(ActiveArea* area) const {
-	if (areaShape == nullptr) {
+bool ActiveAreaImplementation::intersectsWith(ActiveArea* area) {
+	if (areaShape == NULL) {
 		return false;
 	}
 
 	return areaShape->intersectsWith(area->getAreaShape());
-}
-
-void ActiveAreaImplementation::initializeChildObject(SceneObject* controllerObject) {
-	ManagedReference<SceneObject*> objectParent = controllerObject->getParent().get();
-
-	if (objectParent != nullptr && objectParent->isCellObject()) {
-		setCellObjectID(objectParent->getObjectID());
-	}
 }

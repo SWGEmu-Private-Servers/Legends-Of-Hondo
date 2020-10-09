@@ -39,32 +39,32 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> player = cast<CreatureObject*>( client->getPlayer().get().get());
 
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
 		Reference<CraftingSession*> session = player->getActiveSession(SessionFacadeType::CRAFTING).castTo<CraftingSession*>();
 
-		if (session == nullptr) {
+		if(session == NULL) {
 			//warning("Trying to remove an ingredient when no session exists");
 			return;
 		}
 
-		if (session->getState() > 2){
+		if(session->getState() > 2){
 			//warning("Trying to remove an ingredient when the item is already assembled");
 			return;
 		}
 
 		ManagedReference<TradeSession*> tradeContainer = player->getActiveSession(SessionFacadeType::TRADE).castTo<TradeSession*>();
 
-		if (tradeContainer != nullptr) {
+		if (tradeContainer != NULL) {
 			server->getZoneServer()->getPlayerManager()->handleAbortTradeMessage(player);
 		}
 
 		ManagedReference<SceneObject* > object = player->getZoneServer()->getObject(objectID);
 
-		if (object == nullptr || !object->isTangibleObject()) {
+		if(object == NULL || !object->isTangibleObject()) {
 			player->sendSystemMessage("@ui_craft:err_invalid_ingredient");
 			return;
 		}

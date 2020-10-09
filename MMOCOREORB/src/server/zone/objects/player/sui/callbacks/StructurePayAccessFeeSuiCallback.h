@@ -18,15 +18,13 @@ public:
 
 	}
 
-	void run(CreatureObject* player, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if(!sui->isMessageBox() || cancelPressed)
 			return;
 
-		ManagedReference<SceneObject*> usingObject = sui->getUsingObject().get();
+		ManagedReference<SceneObject*> usingObject = sui->getUsingObject();
 
-		if (usingObject == nullptr || !usingObject->isBuildingObject())
+		if (usingObject == NULL || !usingObject->isBuildingObject())
 			return;
 
 		BuildingObject* buildingObject = cast<BuildingObject*>(usingObject.get());

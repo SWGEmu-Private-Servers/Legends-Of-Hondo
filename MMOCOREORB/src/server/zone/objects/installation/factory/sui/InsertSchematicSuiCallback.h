@@ -19,18 +19,17 @@ public:
 		: SuiCallback(server) {
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 
 		if(suiBox->getWindowType() == SuiWindowType::FACTORY_SCHEMATIC2BUTTON)
-			handleInsertFactorySchem2(player, suiBox, eventIndex, args);
+			handleInsertFactorySchem2(player, suiBox, cancelPressed, args);
 
 		if(suiBox->getWindowType() == SuiWindowType::FACTORY_SCHEMATIC3BUTTON)
-			handleInsertFactorySchem3(player, suiBox, eventIndex, args);
+			handleInsertFactorySchem3(player, suiBox, cancelPressed, args);
 	}
 
-	void handleInsertFactorySchem2(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		if (!suiBox->isListBox() || eventIndex == 1)
+	void handleInsertFactorySchem2(CreatureObject* player, SuiBox* suiBox, uint32 cancel, Vector<UnicodeString>* args) {
+		if (!suiBox->isListBox() || cancel != 0)
 			return;
 
 		if (args->size() < 1)
@@ -40,9 +39,9 @@ public:
 
 		SuiListBox* listBox = cast<SuiListBox*>( suiBox);
 
-		ManagedReference<SceneObject*> object = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> object = suiBox->getUsingObject();
 
-		if (object == nullptr || !object->isFactory())
+		if (object == NULL || !object->isFactory())
 			return;
 
 		FactoryObject* factory = cast<FactoryObject*>( object.get());
@@ -54,8 +53,8 @@ public:
 		factory->handleInsertFactorySchem(player, schematic);
 	}
 
-	void handleInsertFactorySchem3(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		if (!suiBox->isListBox() || eventIndex == 1)
+	void handleInsertFactorySchem3(CreatureObject* player, SuiBox* suiBox, uint32 cancel, Vector<UnicodeString>* args) {
+		if (!suiBox->isListBox() || cancel != 0)
 			return;
 
 		if (args->size() < 2)
@@ -66,9 +65,9 @@ public:
 
 		SuiListBox* listBox = cast<SuiListBox*>( suiBox);
 
-		ManagedReference<SceneObject*> object = suiBox->getUsingObject().get();
+		ManagedReference<SceneObject*> object = suiBox->getUsingObject();
 
-		if (object == nullptr || !object->isFactory())
+		if (object == NULL || !object->isFactory())
 			return;
 
 		FactoryObject* factory = cast<FactoryObject*>( object.get());

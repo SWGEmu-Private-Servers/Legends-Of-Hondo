@@ -8,7 +8,7 @@
 #ifndef CREATEIMMEDIATEAUCTIONMESSAGECALLBACK_H_
 #define CREATEIMMEDIATEAUCTIONMESSAGECALLBACK_H_
 
-#include "server/zone/packets/MessageCallback.h"
+#include "../MessageCallback.h"
 #include "server/zone/managers/auction/AuctionManager.h"
 
 
@@ -42,22 +42,17 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
-
-		if (player == nullptr)
-			return;
-
+		ManagedReference<CreatureObject*> player = client->getPlayer().get().castTo<CreatureObject*>();
 		ManagedReference<TangibleObject*> vendor = server->getZoneServer()->getObject(vendorID).castTo<TangibleObject*>();
 
-		if (vendor == nullptr || (!vendor->isVendor() && !vendor->isBazaarTerminal()))
+		if (player == NULL || vendor == NULL || (!vendor->isVendor() && !vendor->isBazaarTerminal()))
 			return;
 
 		Locker locker(player);
 
 		AuctionManager* auctionManager = server->getZoneServer()->getAuctionManager();
 
-		if (auctionManager != nullptr)
-			auctionManager->addSaleItem(player, objectID, vendor, description, price, duration, false, premium);
+		auctionManager->addSaleItem(player, objectID, vendor, description, price, duration, false, premium);
 	}
 
 };

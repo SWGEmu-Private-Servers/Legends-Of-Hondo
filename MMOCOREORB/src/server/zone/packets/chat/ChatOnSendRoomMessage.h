@@ -5,17 +5,16 @@
 #ifndef CHATONSENDROOMMESSAGE_H_
 #define CHATONSENDROOMMESSAGE_H_
 
-#include "engine/service/proto/BaseMessage.h"
+#include "engine/engine.h"
 
 class ChatOnSendRoomMessage : public BaseMessage {
 public:
-	ChatOnSendRoomMessage(uint32 seq, int error = 0) : BaseMessage() {
+	ChatOnSendRoomMessage(uint32 seq) : BaseMessage() {
 		insertShort(0x03);
 		insertInt(0xE7B61633);  // Opcode
-		insertInt(error);
+		insertInt(0);
 		insertInt(seq);
-	}
+	} 
 
 };
-
 #endif /*CHATONSENDROOMMESSAGE_H_*/

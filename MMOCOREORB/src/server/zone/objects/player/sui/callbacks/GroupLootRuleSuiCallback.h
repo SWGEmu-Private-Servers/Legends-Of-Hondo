@@ -16,13 +16,11 @@ public:
 
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		//Pre: player is locked
 		//Post: player is locked
 
-		if (cancelPressed || !suiBox->isListBox() || player == nullptr || args->size() <= 0)
+		if (cancelPressed || !suiBox->isListBox() || player == NULL || args->size() <= 0)
 			return;
 
 		int selection = Integer::valueOf(args->get(0).toString()); //The row number they chose in the list.
@@ -31,7 +29,7 @@ public:
 			return;
 
 		ManagedReference<GroupObject*> group = player->getGroup();
-		if (group == nullptr)
+		if (group == NULL)
 			return;
 
 		Locker glocker(group, player);

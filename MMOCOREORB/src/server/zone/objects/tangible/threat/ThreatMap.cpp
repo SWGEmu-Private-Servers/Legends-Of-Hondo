@@ -8,12 +8,10 @@
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/tangible/weapon/WeaponObject.h"
 #include "ThreatMap.h"
-#include "ThreatStates.h"
 #include "server/zone/objects/tangible/tasks/ClearThreatStateTask.h"
 #include "server/zone/objects/tangible/tasks/RemoveAggroTask.h"
 #include "server/zone/objects/group/GroupObject.h"
 #include "ThreatMapClearObserversTask.h"
-#include "server/zone/Zone.h"
 
 void ThreatMapEntry::addDamage(WeaponObject* weapon, uint32 damage) {
 	addDamage(weapon->getXpType(), damage);
@@ -52,12 +50,12 @@ void ThreatMapEntry::clearThreatState(uint64 state) {
 
 void ThreatMap::registerObserver(CreatureObject* target) {
 
-	if(threatMapObserver == nullptr) {
+	if(threatMapObserver == NULL) {
 		threatMapObserver = new ThreatMapObserver(self.get());
 		threatMapObserver->deploy();
 	}
 
-	target->registerObserver(ObserverEventType::HEALINGRECEIVED, threatMapObserver);
+	target->registerObserver(ObserverEventType::HEALINGPERFORMED, threatMapObserver);
 }
 
 void ThreatMap::removeObservers() {
@@ -72,7 +70,7 @@ void ThreatMap::addDamage(CreatureObject* target, uint32 damage, String xp) {
 	Locker locker(&lockMutex);
 
 	ManagedReference<TangibleObject*> strongSelf = self.get();
-	if (strongSelf == nullptr || strongSelf.get() == target)
+	if (strongSelf == NULL || strongSelf.get() == target)
 		return;
 
 	int idx = find(target);
@@ -99,12 +97,12 @@ void ThreatMap::addDamage(CreatureObject* target, uint32 damage, String xp) {
 	}
 }
 
-void ThreatMap::removeAll(bool forceRemoveAll) {
+void ThreatMap::removeAll() {
 	Locker locker(&lockMutex);
 
 	removeObservers();
 
-	for (int i = size() - 1; i >= 0; i--) {
+	for (int i = 0; i < size(); i++) {
 		VectorMapEntry<ManagedReference<CreatureObject*> , ThreatMapEntry> *entry = &elementAt(i);
 
 		ManagedReference<CreatureObject*> key = entry->getKey();
@@ -113,17 +111,11 @@ void ThreatMap::removeAll(bool forceRemoveAll) {
 		ManagedReference<TangibleObject*> selfStrong = self.get();
 
 		// these checks will determine if we should store the damage from the dropped aggressor
-		Zone* keyZone = (key != nullptr ? key->getZone() : nullptr);
-		Zone* selfZone = (selfStrong != nullptr ? selfStrong->getZone() : nullptr);
-
-		uint32 keyPlanetCRC = (keyZone != nullptr ? keyZone->getPlanetCRC() : 0);
-		uint32 selfPlanetCRC = (selfZone != nullptr ? selfZone->getPlanetCRC() : 0);
-
-		if (key == nullptr || selfStrong == nullptr || key->isDead() || !key->isOnline() || keyPlanetCRC != selfPlanetCRC || forceRemoveAll) {
+		if (key == NULL || selfStrong == NULL || key->isDead() || !key->isOnline() || key->getPlanetCRC() != selfStrong->getPlanetCRC()) {
 			remove(i);
 
-			if (threatMapObserver != nullptr)
-				key->dropObserver(ObserverEventType::HEALINGRECEIVED, threatMapObserver);
+			if (threatMapObserver != NULL)
+				key->dropObserver(ObserverEventType::HEALINGPERFORMED, threatMapObserver);
 		} else {
 			value->setNonAggroDamage(value->getTotalDamage());
 			value->addHeal(-value->getHeal()); // don't need to store healing
@@ -131,7 +123,7 @@ void ThreatMap::removeAll(bool forceRemoveAll) {
 		}
 	}
 
-	currentThreat = nullptr;
+	currentThreat = NULL;
 	threatMatrix.clear();
 }
 
@@ -139,11 +131,11 @@ void ThreatMap::dropDamage(CreatureObject* target) {
 	Locker llocker(&lockMutex);
 
 	ManagedReference<TangibleObject*> selfStrong = self.get();
-	if (target == nullptr || selfStrong == nullptr || target->isDead() || !target->isOnline() || target->getPlanetCRC() != selfStrong->getPlanetCRC()) {
+	if (target == NULL || selfStrong == NULL || target->isDead() || !target->isOnline() || target->getPlanetCRC() != selfStrong->getPlanetCRC()) {
 		drop(target);
 
-		if (threatMapObserver != nullptr)
-			target->dropObserver(ObserverEventType::HEALINGRECEIVED, threatMapObserver);
+		if (threatMapObserver != NULL)
+			target->dropObserver(ObserverEventType::HEALINGPERFORMED, threatMapObserver);
 	} else {
 		ThreatMapEntry *entry = &get(target);
 		entry->setNonAggroDamage(entry->getTotalDamage());
@@ -154,7 +146,7 @@ void ThreatMap::dropDamage(CreatureObject* target) {
 	llocker.release();
 
 	if (currentThreat == target)
-		currentThreat = nullptr;
+		currentThreat = NULL;
 }
 
 bool ThreatMap::setThreatState(CreatureObject* target, uint64 state, uint64 duration, uint64 cooldown) {
@@ -247,7 +239,7 @@ CreatureObject* ThreatMap::getHighestDamagePlayer() {
 
 	uint32 maxDamage = 0;
 	VectorMap<uint64,uint32> damageMap;
-	CreatureObject* player = nullptr;
+	CreatureObject* player = NULL;
 
 	for (int i = 0; i < size(); ++i) {
 		ThreatMapEntry* entry = &elementAt(i).getValue();
@@ -270,7 +262,7 @@ CreatureObject* ThreatMap::getHighestDamagePlayer() {
 		} else if (creature->isPet()) {
 			CreatureObject* owner = creature->getLinkedCreature().get();
 
-			if (owner != nullptr && owner->isPlayerCreature()) {
+			if (owner != NULL && owner->isPlayerCreature()) {
 				if(!damageMap.contains(owner->getObjectID())){
 					damageMap.put(owner->getObjectID(),totalDamage);
 				} else {
@@ -288,7 +280,7 @@ CreatureObject* ThreatMap::getHighestDamagePlayer() {
 	return player;
 }
 
-CreatureObject* ThreatMap::getHighestDamageGroupLeader() {
+CreatureObject* ThreatMap::getHighestDamageGroupLeader(){
 
 	Locker locker(&lockMutex);
 
@@ -297,7 +289,7 @@ CreatureObject* ThreatMap::getHighestDamageGroupLeader() {
 
 	//Logger::Logger tlog("Threat");
 
-	ManagedReference<CreatureObject*> leaderCreature = nullptr;
+	ManagedReference<CreatureObject*> leaderCreature = NULL;
 
 	for (int i = 0; i < size(); ++i) {
 		ThreatMapEntry* entry = &elementAt(i).getValue();
@@ -306,55 +298,56 @@ CreatureObject* ThreatMap::getHighestDamageGroupLeader() {
 
 		CreatureObject* creature = elementAt(i).getKey();
 		//tlog.info("Group id is " + String::valueOf(creature->getGroupID()),true);
-		if (creature->isGrouped()) {
+		if(creature->isGrouped()){
 
-			Reference<CreatureObject*> thisleader = creature->getGroup()->getLeader();
+			Reference<CreatureObject*> thisleader = (creature->getGroup()->getLeader()).castTo<CreatureObject*>();
 			//tlog.info("leader is " + thisleader->getFirstName(),true);
 
-			if (thisleader == nullptr || !thisleader->isPlayerCreature())
+			if(thisleader == NULL || !thisleader->isPlayerCreature())
 				break;
 
-			if (!groupDamageMap.contains(creature->getGroupID())) {
+			if(!groupDamageMap.contains(creature->getGroupID())){
 				//tlog.info("first dmg for group " + String::valueOf(creature->getGroupID()) + " dmg: " + String::valueOf(totalDamage), true);
 				groupDamageMap.put(creature->getGroupID(),totalDamage);
 
 			} else {
 				groupDamageMap.get(creature->getGroupID()) += totalDamage;
 				//tlog.info("adding to group " + String::valueOf(creature->getGroupID()) + "  dmg total: " + String::valueOf(groupDamageMap.get(creature->getGroupID())) + " this player dmg: " + String::valueOf(totalDamage),true);
+
 			}
 
-			if (groupDamageMap.get(creature->getGroupID()) > highestGroupDmg) {
+			if(groupDamageMap.get(creature->getGroupID()) > highestGroupDmg){
 				highestGroupDmg = groupDamageMap.get(creature->getGroupID());
 				leaderCreature = thisleader;
 			}
 		} else if (creature->isPet()) {
 			CreatureObject* owner = creature->getLinkedCreature().get();
 
-			if (owner != nullptr && owner->isPlayerCreature()) {
+			if (owner != NULL && owner->isPlayerCreature()) {
 				if (owner->isGrouped()) {
-					Reference<CreatureObject*> thisleader = owner->getGroup()->getLeader();
+					Reference<CreatureObject*> thisleader = (owner->getGroup()->getLeader()).castTo<CreatureObject*>();
 
-					if (thisleader == nullptr || !thisleader->isPlayerCreature())
+					if(thisleader == NULL || !thisleader->isPlayerCreature())
 						break;
 
-					if (!groupDamageMap.contains(owner->getGroupID())) {
+					if(!groupDamageMap.contains(owner->getGroupID())){
 						groupDamageMap.put(owner->getGroupID(),totalDamage);
 					} else {
 						groupDamageMap.get(owner->getGroupID()) += totalDamage;
 					}
 
-					if (groupDamageMap.get(owner->getGroupID()) > highestGroupDmg) {
+					if(groupDamageMap.get(owner->getGroupID()) > highestGroupDmg){
 						highestGroupDmg = groupDamageMap.get(owner->getGroupID());
 						leaderCreature = thisleader;
 					}
 				} else {
-					if (!groupDamageMap.contains(owner->getObjectID())) {
+					if(!groupDamageMap.contains(owner->getObjectID())){
 						groupDamageMap.put(owner->getObjectID(),totalDamage);
 					} else {
 						groupDamageMap.get(owner->getObjectID()) += totalDamage;
 					}
 
-					if (totalDamage > highestGroupDmg) {
+					if(totalDamage > highestGroupDmg) {
 						highestGroupDmg = totalDamage;
 						leaderCreature = owner;
 					}
@@ -363,8 +356,7 @@ CreatureObject* ThreatMap::getHighestDamageGroupLeader() {
 		} else {
 			//tlog.info("adding single creature damage " + String::valueOf(totalDamage),true);
 			groupDamageMap.put(creature->getObjectID(),totalDamage);
-
-			if (totalDamage > highestGroupDmg) {
+			if(totalDamage > highestGroupDmg) {
 				highestGroupDmg = totalDamage;
 				leaderCreature = creature;
 			}
@@ -380,7 +372,7 @@ CreatureObject* ThreatMap::getHighestThreatCreature() {
 
 	ManagedReference<CreatureObject*> currentThreat = this->currentThreat.get();
 
-	if(currentThreat != nullptr && !currentThreat->isDead() && !currentThreat->isIncapacitated()
+	if(currentThreat != NULL && !currentThreat->isDead() && !currentThreat->isIncapacitated()
 			&& !currentThreat->isDestroyed() && !cooldownTimerMap.isPast("doEvaluation"))
 		return currentThreat;
 
@@ -406,7 +398,7 @@ void ThreatMap::addAggro(CreatureObject* target, int value, uint64 duration) {
 	Locker locker(&lockMutex);
 
 	ManagedReference<TangibleObject*> strongSelf = self.get();
-	if (strongSelf == nullptr || strongSelf.get() == target)
+	if (strongSelf == NULL || strongSelf.get() == target)
 		return;
 
 	int idx = find(target);
@@ -454,7 +446,7 @@ void ThreatMap::addHeal(CreatureObject* target, int value) {
 	Locker locker(&lockMutex);
 
 	ManagedReference<TangibleObject*> strongSelf = self.get();
-	if (strongSelf == nullptr || strongSelf.get() == target)
+	if (strongSelf == NULL || strongSelf.get() == target)
 		return;
 
 	int idx = find(target);

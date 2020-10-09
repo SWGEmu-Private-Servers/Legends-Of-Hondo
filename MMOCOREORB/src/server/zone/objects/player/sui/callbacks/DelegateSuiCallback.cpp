@@ -13,9 +13,7 @@
 DelegateSuiCallback::DelegateSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 }
 
-void DelegateSuiCallback::run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-	bool cancelPressed = (eventIndex == 1);
-
+void DelegateSuiCallback::run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 	if (!sui->isTransferBox() || cancelPressed)
 		return;
 
@@ -27,15 +25,15 @@ void DelegateSuiCallback::run(CreatureObject* creature, SuiBox* sui, uint32 even
 	if (tipAmount == 0)
 		return;
 
-	ManagedReference<SceneObject*> usingObject = sui->getUsingObject().get();
+	ManagedReference<SceneObject*> usingObject = sui->getUsingObject();
 
-	if (usingObject == nullptr || !usingObject->isPlayerCreature()) {
+	if (!usingObject->isPlayerCreature()) {
 		return;
 	}
 
 	CreatureObject* targetPlayer = cast<CreatureObject*>(usingObject.get());
 
-	if (targetPlayer == nullptr)
+	if (targetPlayer == NULL)
 		return;
 
 	DelegateFactionPointsCommand::doDelegate(creature, targetPlayer, tipAmount);

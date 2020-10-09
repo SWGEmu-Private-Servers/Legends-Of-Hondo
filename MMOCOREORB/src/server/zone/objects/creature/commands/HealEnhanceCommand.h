@@ -5,7 +5,6 @@
 #ifndef HEALENHANCECOMMAND_H_
 #define HEALENHANCECOMMAND_H_
 
-#include "server/zone/objects/building/BuildingObject.h"
 #include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/objects/tangible/pharmaceutical/EnhancePack.h"
 #include "server/zone/ZoneServer.h"
@@ -14,6 +13,7 @@
 #include "server/zone/objects/creature/buffs/Buff.h"
 #include "server/zone/objects/creature/BuffAttribute.h"
 #include "server/zone/objects/creature/buffs/DelayedBuff.h"
+#include "server/zone/packets/object/CombatAction.h"
 #include "server/zone/managers/collision/CollisionManager.h"
 
 class HealEnhanceCommand : public QueueCommand {
@@ -23,7 +23,7 @@ public:
 
 	HealEnhanceCommand(const String& name, ZoneProcessServer* server)
 		: QueueCommand(name, server) {
-
+		
 		mindCost = 150;
 		range = 7;
 	}
@@ -36,7 +36,7 @@ public:
 		if (creature->hasBuff(BuffCRC::FOOD_HEAL_RECOVERY)) {
 			DelayedBuff* buff = cast<DelayedBuff*>( creature->getBuff(BuffCRC::FOOD_HEAL_RECOVERY));
 
-			if (buff != nullptr) {
+			if (buff != NULL) {
 				float percent = buff->getSkillModifierValue("heal_recovery");
 
 				delay = round(delay * (100.0f - percent) / 100.0f);
@@ -56,28 +56,32 @@ public:
 
 		int medicineUse = enhancer->getSkillMod("healing_ability");
 
-		if (inventory != nullptr) {
+		if (inventory != NULL) {
 			for (int i = 0; i < inventory->getContainerObjectsSize(); ++i) {
 				SceneObject* object = inventory->getContainerObject(i);
 
-				if (!object->isPharmaceuticalObject())
+				if (!object->isTangibleObject())
 					continue;
 
-				PharmaceuticalObject* pharma = cast<PharmaceuticalObject*>(object);
+				TangibleObject* item = cast<TangibleObject*>( object);
 
-				if (pharma->isEnhancePack()) {
-					EnhancePack* enhancePack = cast<EnhancePack*>(pharma);
+				if (item->isPharmaceuticalObject()) {
+					PharmaceuticalObject* pharma = cast<PharmaceuticalObject*>( item);
 
-					if (enhancePack->getMedicineUseRequired() <= medicineUse && enhancePack->getAttribute() == attribute)
-						return enhancePack;
+					if (pharma->isEnhancePack()) {
+						EnhancePack* enhancePack = cast<EnhancePack*>( pharma);
+
+						if (enhancePack->getMedicineUseRequired() <= medicineUse && enhancePack->getAttribute() == attribute)
+							return enhancePack;
+					}
 				}
 			}
 		}
 
-		return nullptr;
+		return NULL;
 	}
 
-	bool canPerformSkill(CreatureObject* enhancer, CreatureObject* patient, EnhancePack* enhancePack, int mindCostNew) const {
+	bool canPerformSkill(CreatureObject* enhancer, CreatureObject* patient, EnhancePack* enhancePack) const {
 		if (patient->isDead())
 			return false;
 
@@ -86,7 +90,7 @@ public:
 			return false;
 		}
 
-		if (enhancePack == nullptr) {
+		if (enhancePack == NULL) {
 			enhancer->sendSystemMessage("@healing_response:healing_response_60"); //No valid medicine found.
 			return false;
 		}
@@ -98,7 +102,7 @@ public:
 		}else {
 			// are we in a cantina? we have a private medical rating so either thats form a droid or camp or hospital
 			ManagedReference<SceneObject*> root = enhancer->getRootParent();
-			if (root != nullptr && root->isClientObject()) {
+			if (root != NULL && root->isStaticObject()) {
 				uint32 gameObjectType = root->getGameObjectType();
 				switch (gameObjectType) {
 						case SceneObjectType::RECREATIONBUILDING:
@@ -111,7 +115,7 @@ public:
 		}
 
 		if (enhancer->isInCombat()) {
-			enhancer->sendSystemMessage("You cannot HealEnhance yourself while in Combat.");
+			enhancer->sendSystemMessage("You cannot do that while in Combat.");
 			return false;
 		}
 
@@ -121,48 +125,19 @@ public:
 		}
 
 		if (patient->isInCombat()) {
-			enhancer->sendSystemMessage("You cannot HealEnhance your target while they are still in Combat.");
+			enhancer->sendSystemMessage("You cannot do that while your target is in Combat.");
 			return false;
 		}
 
-		if (enhancer->getHAM(CreatureAttribute::MIND) < mindCostNew) {
+		if (enhancer->getHAM(CreatureAttribute::MIND) < mindCost) {
 			enhancer->sendSystemMessage("@healing_response:not_enough_mind"); //You do not have enough mind to do that.
 			return false;
 		}
 
 		if (enhancer != patient && !CollisionManager::checkLineOfSight(enhancer, patient)) {
-			enhancer->sendSystemMessage("@healing:no_line_of_sight"); // You cannot see your target.
+			enhancer->sendSystemMessage("@container_error_message:container18");
 			return false;
 		}
-
-		if (enhancer->isPlayerCreature() && patient->getParentID() != 0 && enhancer->getParentID() != patient->getParentID()) {
-			Reference<CellObject*> targetCell = patient->getParent().get().castTo<CellObject*>();
-
-			if (targetCell != nullptr) {
-				if (!patient->isPlayerCreature()) {
-					auto perms = targetCell->getContainerPermissions();
-
-					if (!perms->hasInheritPermissionsFromParent()) {
-						if (!targetCell->checkContainerPermission(enhancer, ContainerPermissions::WALKIN)) {
-							enhancer->sendSystemMessage("@combat_effects:cansee_fail"); // You cannot see your target.
-							return false;
-						}
-					}
-				}
-
-				ManagedReference<SceneObject*> parentSceneObject = targetCell->getParent().get();
-
-				if (parentSceneObject != nullptr) {
-					BuildingObject* buildingObject = parentSceneObject->asBuildingObject();
-
-					if (buildingObject != nullptr && !buildingObject->isAllowedEntry(enhancer)) {
-						enhancer->sendSystemMessage("@combat_effects:cansee_fail"); // You cannot see your target.
-						return false;
-					}
-				}
-			}
-		}
-
 
 		return true;
 	}
@@ -234,29 +209,6 @@ public:
 		}
 	}
 
-	uint32 getEnhancePackStrength(EnhancePack *enhancePack, CreatureObject* enhancer, CreatureObject *patient) const {
-		uint32 buffPower = 0;
-		if (BuffAttribute::isProtection(enhancePack->getAttribute())) {  // If it's a protection enhancement, wound treatment has no effect
-			buffPower = enhancePack->getEffectiveness();
-			buffPower = buffPower * patient->calculateBFRatio();
-		} else
-			buffPower = enhancePack->calculatePower(enhancer, patient);
-
-		return buffPower;
-	}
-
-	uint32 getBuffStrength(Buff* existingbuff, int attribute) const {
-
-		if (existingbuff != nullptr) {
-
-			if (BuffAttribute::isProtection(attribute))
-				return existingbuff->getSkillModifierValue(BuffAttribute::getProtectionString(attribute));
-			else
-				return existingbuff->getAttributeModifierValue(attribute);
-		}
-		return 0;
-	}
-
 	void awardXp(CreatureObject* creature, const String& type, int power) const {
 		if (!creature->isPlayerCreature())
 			return;
@@ -292,11 +244,11 @@ public:
 
 		ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(target);
 
-		if (object != nullptr) {
+		if (object != NULL) {
 			if (!object->isCreatureObject()) {
 				TangibleObject* tangibleObject = dynamic_cast<TangibleObject*>(object.get());
-
-				if (tangibleObject != nullptr && tangibleObject->isAttackableBy(creature)) {
+ 
+				if (tangibleObject != NULL && tangibleObject->isAttackableBy(creature)) {
 					object = creature;
 				} else {
 					creature->sendSystemMessage("@healing_response:healing_response_77"); //Target must be a player or a creature pet in order to apply enhancements.
@@ -312,25 +264,26 @@ public:
 		uint8 attribute = BuffAttribute::UNKNOWN;
 		uint64 objectId = 0;
 
-		if(!checkDistance(creature, targetCreature, range))
+		if (!targetCreature->isInRange(creature, range + targetCreature->getTemplateRadius() + creature->getTemplateRadius()))
 			return TOOFAR;
 
 		parseModifier(arguments.toString(), attribute, objectId);
 
-		CreatureObject* patient = cast<CreatureObject*>( targetCreature);
+		if (attribute == BuffAttribute::UNKNOWN) {
+			enhancer->sendSystemMessage("@healing_response:healing_response_75"); //You must specify a valid attribute.
+			return GENERALERROR;
+		}
 
-		Locker clocker(patient, creature);
-
-		ManagedReference<EnhancePack*> enhancePack = nullptr;
+		ManagedReference<EnhancePack*> enhancePack = NULL;
 
 		if (objectId != 0) {
 			SceneObject* inventory = creature->getSlottedObject("inventory");
 
-			if (inventory != nullptr) {
+			if (inventory != NULL) {
 				enhancePack = inventory->getContainerObject(objectId).castTo<EnhancePack*>();
 			}
 
-			if (enhancePack == nullptr) {
+			if (enhancePack == NULL) {
 				enhancer->sendSystemMessage("@healing_response:healing_response_76"); // That item does not provide attribute enhancement.
 				return false;
 			}
@@ -346,70 +299,17 @@ public:
 				attribute = enhancePack->getAttribute();
 			}
 		} else {
-			if (attribute == BuffAttribute::UNKNOWN) {
-				SortedVector<Buff*> currentBuffs; //values are sorted by duration
-				VectorMap<Buff*, int> attributeMap;
-
-				for(int i=0; i<CreatureAttribute::MIND; i++) {
-					uint32 buffCRC = BuffCRC::getMedicalBuff(i);
-					if(patient->hasBuff(buffCRC)) {
-						Buff *buff = patient->getBuff(buffCRC);
-						currentBuffs.put(buff);
-						attributeMap.put(buff, i);
-
-						continue;
-					}
-
-					attribute = i;
-					enhancePack = findEnhancePack(creature, i);
-					if(enhancePack != nullptr)
-						break;
-				}
-
-
-				if(enhancePack == nullptr) {
-
-					// We couldn't find any enhance packs for non-applied buffs.
-					// Loop through the applied buffs and see if one matches our criteria
-					// This should be sorted by time applied - This ensures we don't overwrite the same buff repeatedly
-					for(int i=0; i<currentBuffs.size(); i++) {
-						Buff *buff = currentBuffs.get(i);
-
-						attribute = attributeMap.get(buff);
-						enhancePack = findEnhancePack(creature, attribute);
-						if(enhancePack != nullptr) {
-							uint32 currentBuff = getBuffStrength(buff, attribute);
-							uint32 newBuff = getEnhancePackStrength(enhancePack, enhancer, patient);
-
-							if(newBuff < currentBuff) {
-								enhancePack = nullptr;
-								attribute = BuffAttribute::UNKNOWN;
-							} else {
-								break;
-							}
-						}
-					}
-
-					if(attribute == BuffAttribute::UNKNOWN) {
-						StringIdChatParameter stringId("healing", "no_attrib_to_buff"); // %TT has no attribute that you can enhance.
-						stringId.setTT(patient->getDisplayedName());
-						creature->sendSystemMessage(stringId);
-						return GENERALERROR;
-					}
-				}
-			} else {
-				enhancePack = findEnhancePack(creature, attribute);
-			}
+			enhancePack = findEnhancePack(creature, attribute);
 		}
 
+		CreatureObject* patient = cast<CreatureObject*>( targetCreature);
 
+		Locker clocker(patient, creature);
 
 		if (patient->isDead() || patient->isRidingMount())
 			patient = enhancer;
 
-		int mindCostNew = enhancer->calculateCostAdjustment(CreatureAttribute::FOCUS, mindCost);
-
-		if (!canPerformSkill(enhancer, patient, enhancePack, mindCostNew))
+		if (!canPerformSkill(enhancer, patient, enhancePack))
 			return GENERALERROR;
 
 		uint32 currentBuff = 0;
@@ -418,11 +318,22 @@ public:
 		if (patient->hasBuff(buffcrc)) {
 			Buff* existingbuff = patient->getBuff(buffcrc);
 
-			currentBuff = getBuffStrength(existingbuff, attribute);
+			if (existingbuff != NULL){
+
+				if (BuffAttribute::isProtection(attribute))
+					currentBuff = existingbuff->getSkillModifierValue(BuffAttribute::getProtectionString(attribute));
+				else
+					currentBuff = existingbuff->getAttributeModifierValue(attribute);
+			}
 		}
 
 		//Applies battle fatigue
-		uint32 buffPower = getEnhancePackStrength(enhancePack, enhancer, patient);
+		uint32 buffPower = 0;
+		if (BuffAttribute::isProtection(attribute)) {  // If it's a protection enhancement, wound treatment has no effect
+			buffPower = enhancePack->getEffectiveness();
+			buffPower = buffPower * (1 - patient->calculateBFRatio()) * (1 - enhancer->calculateBFRatio());
+		} else
+			buffPower = enhancePack->calculatePower(enhancer, patient);
 
 		if (buffPower < currentBuff) {
 			if (patient == enhancer)
@@ -435,7 +346,7 @@ public:
 
 		PlayerManager* playerManager = server->getZoneServer()->getPlayerManager();
 
-		uint32 amountEnhanced = playerManager->healEnhance(enhancer, patient, attribute, buffPower, enhancePack->getDuration(), enhancePack->getAbsorption());
+		uint32 amountEnhanced = playerManager->healEnhance(enhancer, patient, attribute, buffPower, enhancePack->getDuration());
 
 		if (creature->isPlayerCreature() && targetCreature->isPlayerCreature()) {
 			playerManager->sendBattleFatigueMessage(creature, targetCreature);
@@ -443,11 +354,11 @@ public:
 
 		sendEnhanceMessage(enhancer, patient, attribute, amountEnhanced);
 
-		enhancer->inflictDamage(enhancer, CreatureAttribute::MIND, mindCostNew, false);
+		enhancer->inflictDamage(enhancer, CreatureAttribute::MIND, mindCost, false);
 
 		deactivateWoundTreatment(enhancer);
 
-		if (enhancePack != nullptr) {
+		if (enhancePack != NULL) {
 			Locker locker(enhancePack);
 			enhancePack->decreaseUseCount();
 		}
@@ -461,8 +372,6 @@ public:
 
 		return SUCCESS;
 	}
-
-
 
 };
 

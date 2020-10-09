@@ -5,10 +5,16 @@
 package server.zone.objects.player;
 
 include engine.core.ManagedObject;
+
+import engine.log.Logger;
+import engine.core.ManagedReference;
+import engine.util.Facade;
+import system.lang.ref.Reference;
+import engine.core.Task;
 import engine.util.Observer;
 import engine.util.Observable;
 import server.zone.objects.creature.CreatureObject;
-include templates.params.ObserverEventType;
+include server.zone.objects.scene.ObserverEventType;
 
 class EntertainingObserver extends Observer {
 	
@@ -19,7 +25,7 @@ class EntertainingObserver extends Observer {
 	@dirty
 	public int notifyObserverEvent(unsigned int eventType, Observable observable, ManagedObject arg1, long arg2) {
 		if (eventType != ObserverEventType.POSTURECHANGED) {
-			return 0;
+			return 1;
 		}
 		
 		CreatureObject creature = (CreatureObject) observable;

@@ -13,9 +13,7 @@ public:
 	StructureWithdrawMaintenanceSuiCallback(ZoneServer* serv) : SuiCallback(serv) {
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
 		if (!sui->isInputBox() || cancelPressed || args->size() < 1)
 			return;
 
@@ -24,9 +22,9 @@ public:
 		if (amount < 0)
 			return;
 
-		ManagedReference<SceneObject*> obj = sui->getUsingObject().get();
+		ManagedReference<SceneObject*> obj = sui->getUsingObject();
 
-		if (obj == nullptr || !obj->isStructureObject())
+		if (obj == NULL || !obj->isStructureObject())
 			return;
 
 		//Withdraw the maintenance
@@ -34,7 +32,7 @@ public:
 
 		ManagedReference<Zone*> zone = structure->getZone();
 
-		if (zone == nullptr)
+		if (zone == NULL)
 			return;
 
 		//Creature is already locked (done in handleSuiEventNotification in SuiManager).

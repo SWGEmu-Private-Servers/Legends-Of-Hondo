@@ -5,7 +5,9 @@
 #ifndef FORCECHOKECOMMAND_H_
 #define FORCECHOKECOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "ForcePowersQueueCommand.h"
+#include "server/zone/objects/player/events/ForceChokeTickTask.h"
 
 class ForceChokeCommand : public ForcePowersQueueCommand {
 public:
@@ -27,14 +29,33 @@ public:
 			return NOJEDIARMOR;
 		}
 
-		ManagedReference<SceneObject*> targetObject = server->getZoneServer()->getObject(target);
+		int res = doCombatAction(creature, target);
 
-		if (targetObject == nullptr || !targetObject->isCreatureObject()) {
-			return INVALIDTARGET;
+		//if (creature->isAiAgent()) { // If they are NPC, don't get past here.
+		//	return SUCCESS;
+		//}
+
+		if (res == SUCCESS) {
+
+			// Setup task, if choke attack was successful (5 tick amount.), AND if they don't already have one.
+
+			Reference<SceneObject*> object = server->getZoneServer()->getObject(target);
+			ManagedReference<CreatureObject*> creatureTarget = cast<CreatureObject*>( object.get());
+
+			if (creatureTarget == NULL)
+				return GENERALERROR;
+
+			Reference<ForceChokeTickTask*> chokeCheck = creatureTarget->getPendingTask("forceChokeTickTask").castTo<ForceChokeTickTask*>();
+
+			if (chokeCheck != NULL) {
+				return SUCCESS;
+			}
+
+			Reference<ForceChokeTickTask*> fctTask = new ForceChokeTickTask(creature, creatureTarget);
+			creatureTarget->addPendingTask("forceChokeTickTask", fctTask, 6000);
 		}
 
-		return doCombatAction(creature, target);
-
+		return SUCCESS;
 	}
 
 };

@@ -26,7 +26,7 @@ public:
 
 		ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(target);
 
-		if (object == nullptr)
+		if (object == NULL)
 			return GENERALERROR;
 
 		if (!object->isPlayerCreature())
@@ -36,11 +36,6 @@ public:
 			return GENERALERROR;
 
 		CreatureObject* playerCreature = cast<CreatureObject*>( object.get());
-
-		PlayerObject* ghost = playerCreature->getPlayerObject();
-
-		if (ghost == nullptr)
-			return GENERALERROR;
 
 		Biography* bio = new Biography(creature, playerCreature);
 		creature->sendMessage(bio);

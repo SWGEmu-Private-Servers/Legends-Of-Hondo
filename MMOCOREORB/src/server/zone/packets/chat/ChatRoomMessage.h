@@ -5,17 +5,17 @@
 #ifndef CHATROOMMESSAGE_H_
 #define CHATROOMMESSAGE_H_
 
-#include "engine/service/proto/BaseMessage.h"
+#include "engine/engine.h"
 
 class ChatRoomMessage : public BaseMessage {
 public:
-	ChatRoomMessage(const String& sender, const String& galaxyName, const UnicodeString& message, uint32 channelid) : BaseMessage() {
+	ChatRoomMessage(const String& sender, const UnicodeString& message, uint32 channelid) : BaseMessage() {
 		insertShort(0x05);
 		insertInt(0xCD4CE444);  // Opcode
 		insertAscii("SWG");
-		insertAscii(galaxyName);
+		insertAscii("Core3");
 		
-		insertAscii(sender.toLowerCase());
+		insertAscii(sender);
 		
 		insertInt(channelid); //Channel ID, Long converted to an Int.
 		
@@ -23,8 +23,8 @@ public:
 		insertInt(0);
 		
 		setCompression(true);
+
 	} 
 
 };
-
 #endif /*CHATROOMMESSAGE_H_*/

@@ -6,7 +6,6 @@
 #define TRANSFERFORCECOMMAND_H_
 
 #include "server/zone/objects/scene/SceneObject.h"
-#include "server/zone/managers/frs/FrsManager.h"
 
 class TransferForceCommand : public CombatQueueCommand {
 public:
@@ -30,12 +29,12 @@ public:
 		ManagedReference<SceneObject*> object = server->getZoneServer()->getObject(target);
 
 		// Fail if target is not a player...
-		if (object == nullptr || !object->isPlayerCreature())
+		if (object == NULL || !object->isPlayerCreature())
 			return INVALIDTARGET;
 
 		CreatureObject* targetCreature = cast<CreatureObject*>( object.get());
 
-		if (targetCreature == nullptr || targetCreature->isDead() || targetCreature->isIncapacitated())
+		if (targetCreature == NULL || targetCreature->isDead() || targetCreature->isIncapacitated())
 			return INVALIDTARGET;
 
 		Locker clocker(targetCreature, creature);
@@ -43,62 +42,43 @@ public:
 		ManagedReference<PlayerObject*> targetGhost = targetCreature->getPlayerObject();
 		ManagedReference<PlayerObject*> playerGhost = creature->getPlayerObject();
 
-		if (targetGhost == nullptr || playerGhost == nullptr)
+		if (targetGhost == NULL || playerGhost == NULL)
 			return GENERALERROR;
-
-		if (targetGhost == playerGhost)
-			return GENERALERROR;
-
+			
 		if (!CollisionManager::checkLineOfSight(creature, targetCreature)) {
-			creature->sendSystemMessage("@cbt_spam:los_fail");// You lost sight of your target.
-			return GENERALERROR;
-		}
-
-		if (!checkDistance(creature, targetCreature, range))
+			creature->sendSystemMessage("@container_error_message:container18");
+			return GENERALERROR;	
+		}			
+			
+		if (!creature->isInRange(targetCreature, range + targetCreature->getTemplateRadius() + creature->getTemplateRadius()))
 			return TOOFAR;
-
-		int transfer = System::random(75) + minDamage; //Value set in command lua
-
-		FrsManager* frsManager = server->getZoneServer()->getFrsManager();
-
-		if (checkForArenaDuel(targetCreature)) {
-			creature->sendSystemMessage("@jedi_spam:no_help_target"); // You are not permitted to help that target.
-			return GENERALERROR;
-		}
-
-		if (!targetCreature->isHealableBy(creature)) {
-			creature->sendSystemMessage("@healing:pvp_no_help"); // It would be unwise to help such a patient.
-			return GENERALERROR;
-		}
-
-		if (playerGhost->getForcePower() < forceCost) {
+			
+		int maxTransfer = damage; //Value set in command lua
+		if (playerGhost->getForcePower() < maxTransfer) {
 			creature->sendSystemMessage("@jedi_spam:no_force_power"); //You do not have enough force to do that.
 			return GENERALERROR;
 		}
+			
+		if (targetCreature->isHealableBy(creature)) {
+			int forceSpace = targetGhost->getForcePowerMax() - targetGhost->getForcePower();
+			if (forceSpace <= 0)
+				return GENERALERROR;
 
-		int forceSpace = targetGhost->getForcePowerMax() - targetGhost->getForcePower();
-		int forceTransfer = 0;
+			int forceTransfer = forceSpace >= maxTransfer ? maxTransfer : forceSpace;
+			targetGhost->setForcePower(targetGhost->getForcePower() + forceTransfer);
+			playerGhost->setForcePower(playerGhost->getForcePower() - forceTransfer);
 
-		if (forceSpace > 0) { //Only allows amount to be transfered that the target can hold and fails if target has full Force.
-			forceTransfer = forceSpace >= transfer ? transfer : forceSpace;
-		} else {
-			return GENERALERROR;
+			creature->doCombatAnimation(targetCreature, animationCRC, 0x1, 0xFF);
+			CombatManager::instance()->broadcastCombatSpam(creature, targetCreature, NULL, forceTransfer, "cbt_spam", combatSpam, 0);
+
+			return SUCCESS;
 		}
 
-		targetGhost->setForcePower(targetGhost->getForcePower() + forceTransfer);
-		playerGhost->setForcePower(playerGhost->getForcePower() - forceCost);
-
-		uint32 animCRC = getAnimationString().hashCode();
-		creature->doCombatAnimation(targetCreature, animCRC, 0x1, 0xFF);
-		CombatManager::instance()->broadcastCombatSpam(creature, targetCreature, nullptr, forceTransfer, "cbt_spam", combatSpam, 0);
-
-		VisibilityManager::instance()->increaseVisibility(creature, visMod);
-
-		return SUCCESS;
+		return GENERALERROR;
 	}
 
 	float getCommandDuration(CreatureObject* object, const UnicodeString& arguments) const {
-		return defaultTime;
+		return defaultTime * 3.0;
 	}
 
 };

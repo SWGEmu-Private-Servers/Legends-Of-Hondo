@@ -5,6 +5,8 @@
 #ifndef BERSERK2COMMAND_H_
 #define BERSERK2COMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
+
 class Berserk2Command : public QueueCommand {
 public:
 
@@ -20,9 +22,6 @@ public:
 
 		if (!checkInvalidLocomotions(creature))
 			return INVALIDLOCOMOTION;
-
-		if (creature->hasAttackDelay() || !creature->checkPostureChangeDelay())
-			return GENERALERROR;
 
 		ManagedReference<WeaponObject*> weapon = creature->getWeapon();
 

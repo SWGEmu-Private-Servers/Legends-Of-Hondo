@@ -8,7 +8,7 @@
 #include "FactionManager.h"
 #include "FactionMap.h"
 #include "server/zone/objects/player/PlayerObject.h"
-#include "templates/manager/TemplateManager.h"
+#include "server/zone/managers/templates/TemplateManager.h"
 
 FactionManager::FactionManager() {
 	setLoggingName("FactionManager");
@@ -24,7 +24,7 @@ void FactionManager::loadData() {
 void FactionManager::loadFactionRanks() {
 	IffStream* iffStream = TemplateManager::instance()->openIffFile("datatables/faction/rank.iff");
 
-	if (iffStream == nullptr) {
+	if (iffStream == NULL) {
 		warning("Faction ranks could not be found.");
 		return;
 	}
@@ -42,44 +42,38 @@ void FactionManager::loadFactionRanks() {
 void FactionManager::loadLuaConfig() {
 	info("Loading config file.", true);
 
-	FactionMap* fMap = getFactionMap();
-
 	Lua* lua = new Lua();
 	lua->init();
+
+	lua_register(lua->getLuaState(), "addFaction", addFaction);
 
 	//Load the faction manager lua file.
 	lua->runFile("scripts/managers/faction_manager.lua");
 
-	LuaObject luaObject = lua->getGlobalObject("factionList");
-
-	if (luaObject.isValidTable()) {
-		for (int i = 1; i <= luaObject.getTableSize(); ++i) {
-			LuaObject factionData = luaObject.getObjectAt(i);
-
-			if (factionData.isValidTable()) {
-				String factionName = factionData.getStringAt(1);
-				bool playerAllowed = factionData.getBooleanAt(2);
-				String enemies = factionData.getStringAt(3);
-				String allies = factionData.getStringAt(4);
-				float adjustFactor = factionData.getFloatAt(5);
-
-				Faction faction(factionName);
-				faction.setAdjustFactor(adjustFactor);
-				faction.setPlayerAllowed(playerAllowed);
-				faction.parseEnemiesFromList(enemies);
-				faction.parseAlliesFromList(allies);
-
-				fMap->addFaction(faction);
-			}
-
-			factionData.pop();
-		}
-	}
-
-	luaObject.pop();
-
 	delete lua;
-	lua = nullptr;
+	lua = NULL;
+
+}
+
+int FactionManager::addFaction(lua_State* L) {
+	String allies = Lua::getStringParameter(L);
+	String enemies = Lua::getStringParameter(L);
+	String factionName = Lua::getStringParameter(L);
+
+	FactionManager* factionManager = FactionManager::instance();
+
+	FactionMap* factionMap = factionManager->getFactionMap();
+
+	if (factionMap == NULL)
+		return 1;
+
+	Faction faction(factionName);
+	faction.parseEnemiesFromList(enemies);
+	faction.parseAlliesFromList(allies);
+
+	factionMap->addFaction(faction);
+
+	return 0;
 }
 
 FactionMap* FactionManager::getFactionMap() {
@@ -87,7 +81,7 @@ FactionMap* FactionManager::getFactionMap() {
 }
 
 void FactionManager::awardFactionStanding(CreatureObject* player, const String& factionName, int level) {
-	if (player == nullptr)
+	if (player == NULL)
 		return;
 
 	ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
@@ -95,33 +89,22 @@ void FactionManager::awardFactionStanding(CreatureObject* player, const String& 
 	if (!factionMap.contains(factionName))
 		return;
 
-	const Faction& faction = factionMap.get(factionName);
-	const SortedVector<String>* enemies = faction.getEnemies();
-	const SortedVector<String>* allies = faction.getAllies();
-
-	if (!faction.isPlayerAllowed())
-		return;
-
-	float gain = level * faction.getAdjustFactor();
+	float gain = level;
 	float lose = gain * 2;
+
+	Faction faction = factionMap.get(factionName);
+	SortedVector<String>* enemies = faction.getEnemies();
+	SortedVector<String>* allies = faction.getAllies();
 
 	ghost->decreaseFactionStanding(factionName, lose);
 
 	//Lose faction standing to allies of the creature.
 	for (int i = 0; i < allies->size(); ++i) {
-		const String& ally = allies->get(i);
+		String ally = allies->get(i);
 
 		if ((ally == "rebel" || ally == "imperial")) {
 			continue;
 		}
-
-		if (!factionMap.contains(ally))
-			continue;
-
-		const Faction& allyFaction = factionMap.get(ally);
-
-		if (!allyFaction.isPlayerAllowed())
-			continue;
 
 		ghost->decreaseFactionStanding(ally, lose);
 	}
@@ -133,19 +116,11 @@ void FactionManager::awardFactionStanding(CreatureObject* player, const String& 
 
 	//Gain faction standing to enemies of the creature.
 	for (int i = 0; i < enemies->size(); ++i) {
-		const String& enemy = enemies->get(i);
+		String enemy = enemies->get(i);
 
 		if ((enemy == "rebel" || enemy == "imperial") && !gcw) {
 			continue;
 		}
-
-		if (!factionMap.contains(enemy))
-			continue;
-
-		const Faction& enemyFaction = factionMap.get(enemy);
-
-		if (!enemyFaction.isPlayerAllowed())
-			continue;
 
 		ghost->increaseFactionStanding(enemy, gain);
 	}
@@ -205,7 +180,7 @@ int FactionManager::getFactionPointsCap(int rank) {
 	if (rank >= factionRanks.getCount())
 		return -1;
 
-	return Math::max(1000, getRankCost(rank) * 20);
+	return MAX(1000, getRankCost(rank) * 20);
 }
 
 bool FactionManager::isFaction(const String& faction) {

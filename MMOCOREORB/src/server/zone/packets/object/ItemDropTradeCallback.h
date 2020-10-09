@@ -31,39 +31,41 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> player = cast<CreatureObject*>( client->getPlayer().get().get());
+		ManagedReference<PlayerObject*> playerObject = NULL;
+		bool privileged = false;
 
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
-		ManagedReference<PlayerObject*> playerObject = player->getPlayerObject();
+		playerObject = player->getPlayerObject();
 
-		if (playerObject == nullptr)
+		if (playerObject == NULL)
 			return;
 
-		bool godMode = false;
-
-		if (playerObject->hasGodMode())
-			godMode = true;
+		if (playerObject->isPrivileged())
+			privileged = true;
 
 		ManagedReference<SceneObject*> targetObject = server->getZoneServer()->getObject(targetToTrade);
 
-		if (targetObject == nullptr || !targetObject->isPlayerCreature() || targetObject == player) {
+		if (targetObject == NULL || !targetObject->isPlayerCreature() || targetObject == player) {
 			//player->error("invalid target to trade " + String::valueOf(targetToTrade));
 			return;
 		}
 
 		CreatureObject* targetPlayer = cast<CreatureObject*>( targetObject.get());
 
-		if (targetPlayer->getPlayerObject()->isIgnoring(player->getFirstName().toLowerCase()) && !godMode)
+		if (targetPlayer->getPlayerObject()->isIgnoring(player->getFirstName().toLowerCase()) && !privileged)
 			return;
+
+		PlayerObject* ghost = player->getPlayerObject();
 
 		ManagedReference<TradeSession*> playerTradeContainer = player->getActiveSession(SessionFacadeType::TRADE).castTo<TradeSession*>();
 
-		if (player->isInCombat() || (playerTradeContainer != nullptr && playerTradeContainer->getTradeTargetPlayer() == targetToTrade))
+		if (player->isInCombat() || (playerTradeContainer != NULL && playerTradeContainer->getTradeTargetPlayer() == targetToTrade))
 			return;
 
-		if (playerTradeContainer == nullptr) {
+		if (playerTradeContainer == NULL) {
 			playerTradeContainer = new TradeSession();
 			player->addActiveSession(SessionFacadeType::TRADE, playerTradeContainer);
 		}
@@ -72,9 +74,11 @@ public:
 
 		Locker clocker(targetPlayer, player);
 
+		PlayerObject* targetGhost = targetPlayer->getPlayerObject();
+
 		ManagedReference<TradeSession*> targetTradeContainer = targetPlayer->getActiveSession(SessionFacadeType::TRADE).castTo<TradeSession*>();
 
-		if (targetTradeContainer != nullptr && targetTradeContainer->getTradeTargetPlayer() == player->getObjectID()) {
+		if (targetTradeContainer != NULL && targetTradeContainer->getTradeTargetPlayer() == player->getObjectID()) {
 			BeginTradeMessage* msg = new BeginTradeMessage(targetPlayer->getObjectID());
 			player->sendMessage(msg);
 

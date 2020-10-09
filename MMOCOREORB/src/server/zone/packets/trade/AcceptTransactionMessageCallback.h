@@ -9,7 +9,7 @@
 #define ACCEPTTRANSACTIONMESSAGECALLBACK_H_
 
 
-#include "server/zone/packets/MessageCallback.h"
+#include "../MessageCallback.h"
 #include "server/zone/managers/player/PlayerManager.h"
 
 class AcceptTransactionMessageCallback : public MessageCallback {
@@ -26,9 +26,9 @@ public:
 	}
 
 	void run() {
-		ManagedReference<CreatureObject*> player = client->getPlayer();
+		ManagedReference<CreatureObject*> player = static_cast<CreatureObject*>(client->getPlayer().get().get());
 
-		if (player == nullptr)
+		if (player == NULL)
 			return;
 
 		PlayerManager* playerManager = server->getZoneServer()->getPlayerManager();

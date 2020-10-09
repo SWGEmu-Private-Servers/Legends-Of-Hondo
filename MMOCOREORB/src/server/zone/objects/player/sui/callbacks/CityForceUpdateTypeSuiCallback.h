@@ -28,21 +28,19 @@ public:
 		cityRegion = city;
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		ManagedReference<CityRegion*> city = cityRegion.get();
 
-		if (city == nullptr)
+		if (city == NULL)
 			return;
 
-		if (!suiBox->isMessageBox() || player == nullptr) {
+		if (!suiBox->isMessageBox() || player == NULL) {
 			return;
 		}
 
 		PlayerObject* ghost = player->getPlayerObject();
 
-		if (ghost == nullptr)
+		if (ghost == NULL)
 			return;
 
 		if (!ghost->isPrivileged())

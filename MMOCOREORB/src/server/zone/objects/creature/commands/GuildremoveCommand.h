@@ -7,7 +7,6 @@
 
 #include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/managers/guild/GuildManager.h"
-#include "server/zone/objects/guild/GuildObject.h"
 
 class GuildremoveCommand : public QueueCommand {
 public:
@@ -35,34 +34,32 @@ public:
 			return GENERALERROR;
 		}
 
-		if(server == nullptr)
+		if(server == NULL)
 			return GENERALERROR;
 
 		ManagedReference<ZoneServer* > zserv = server->getZoneServer();
-		if( zserv == nullptr )
+		if( zserv == NULL )
 			return GENERALERROR;
 
-		ManagedReference<CreatureObject*> playerToKick = nullptr;
+		ManagedReference<CreatureObject*> playerToKick = NULL;
 		ManagedReference<SceneObject* > targetedObject = zserv->getObject(target);
-		ManagedReference<GuildObject*> guild = player->getGuildObject().get();
+		ManagedReference<GuildObject*> guild = player->getGuildObject();
 		ManagedReference<GuildManager*> guildManager = zserv->getGuildManager();
 		ManagedReference<PlayerManager*> playerManager = zserv->getPlayerManager();
 
-		if( guild == nullptr || guildManager == nullptr || playerManager == nullptr)
+		if( guild == NULL || guildManager == NULL || playerManager == NULL)
 			return GENERALERROR;
 
 		String lowerNamedTarget = arguments.toString().toLowerCase();
 
 		if(!lowerNamedTarget.isEmpty()) {
 			playerToKick = playerManager->getPlayer(lowerNamedTarget);
-		} else if(targetedObject != nullptr && targetedObject->isPlayerCreature()) {
+		} else if(targetedObject != NULL && targetedObject->isPlayerCreature()) {
 			playerToKick = cast<CreatureObject*>( targetedObject.get());
-		} else {
-			playerToKick = player;
 		}
 
-		if(playerToKick == nullptr || !playerToKick->isInGuild() || !guild->hasMember(playerToKick->getObjectID())) {
-			player->sendSystemMessage("@guild:generic_fail_no_permission"); //You do not have permission to perform that operation.
+		if(playerToKick == NULL || !playerToKick->isInGuild() || guild->getMember(playerToKick->getObjectID()) == NULL) {
+			player->sendSystemMessage("You can only remove members of your guild.");
 			return GENERALERROR;
 		}
 
@@ -72,9 +69,14 @@ public:
 				return GENERALERROR;
 			}
 			guildManager->sendGuildKickPromptTo(player, playerToKick);
-
-		} else {
-			guildManager->leaveGuild(player, guild);
+		}
+		else
+		{
+			// TODO: Allow leader to leave guild once guild elections are enabled
+			if(guild->getGuildLeaderID() == player->getObjectID())
+				player->sendSystemMessage("Guild leader cannot leave the guild");
+			else
+				guildManager->leaveGuild(player, guild);
 		}
 
 		return SUCCESS;

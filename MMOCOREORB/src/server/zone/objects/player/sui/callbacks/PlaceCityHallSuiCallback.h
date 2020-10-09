@@ -15,8 +15,8 @@
 #include "server/zone/managers/planet/PlanetManager.h"
 #include "server/zone/managers/name/NameManager.h"
 #include "server/zone/managers/city/CityManager.h"
+#include "server/zone/objects/region/CityRegion.h"
 #include "server/zone/Zone.h"
-#include "server/zone/ZoneProcessServer.h"
 
 class PlaceCityHallSuiCallback : public SuiCallback {
 	ManagedWeakReference<Zone*> zone;
@@ -37,10 +37,8 @@ public:
 		this->angle = angle;
 	}
 
-	void run(CreatureObject* creature, SuiBox* sui, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
-		if (!sui->isInputBox() || cancelPressed || creature == nullptr)
+	void run(CreatureObject* creature, SuiBox* sui, bool cancelPressed, Vector<UnicodeString>* args) {
+		if (!sui->isInputBox() || cancelPressed || creature == NULL)
 			return;
 
 		if (args->size() < 0)
@@ -48,13 +46,12 @@ public:
 
 		ManagedReference<Zone*> zone = this->zone.get();
 
-		if (zone == nullptr)
+		if (zone == NULL)
 			return;
 
 		String cityName = args->get(0).toString();
 
-		ZoneProcessServer* zps = creature->getZoneProcessServer();
-		NameManager* nameManager = zps->getNameManager();
+		NameManager* nameManager = NameManager::instance();
 
 		int nameResult = nameManager->validateCityName(cityName);
 

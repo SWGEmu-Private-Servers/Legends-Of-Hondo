@@ -5,13 +5,13 @@
 #ifndef JEDIMINDTRICKCOMMAND_H_
 #define JEDIMINDTRICKCOMMAND_H_
 
-#include "server/zone/objects/creature/commands/JediQueueCommand.h"
+#include "server/zone/objects/scene/SceneObject.h"
 
-class JediMindTrickCommand : public JediQueueCommand {
+class JediMindTrickCommand : public QueueCommand {
 public:
 
 	JediMindTrickCommand(const String& name, ZoneProcessServer* server)
-		: JediQueueCommand(name, server) {
+		: QueueCommand(name, server) {
 
 	}
 

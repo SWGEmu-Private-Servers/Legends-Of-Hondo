@@ -7,12 +7,12 @@
 
 
 #include "server/zone/objects/tangible/powerup/PowerupObject.h"
-#include "templates/tangible/PowerupTemplate.h"
+#include "server/zone/templates/tangible/PowerupTemplate.h"
 #include "server/zone/packets/scene/AttributeListMessage.h"
 #include "server/zone/objects/tangible/weapon/WeaponObject.h"
 
-float PowerupObjectImplementation::MAXPRIMARY = 33.16f;
-float PowerupObjectImplementation::MAXSECONDARY = 16.33f;
+float PowerupObjectImplementation::MAXPRIMARY = 33.16;
+float PowerupObjectImplementation::MAXSECONDARY = 16.33;
 
 void PowerupObjectImplementation::fillAttributeList(AttributeListMessage* alm, CreatureObject* object) {
 
@@ -51,34 +51,35 @@ void PowerupObjectImplementation::fillWeaponAttributeList(AttributeListMessage* 
 	}
 }
 
-float PowerupObjectImplementation::getWeaponStat(const String& attrib, WeaponObject* weapon, bool withPup) const {
-	if (attrib == "pointBlankAccuracy")
+float PowerupObjectImplementation::getWeaponStat(const String& attrib, WeaponObject* weapon, bool withPup) {
+
+	if(attrib == "pointBlankAccuracy")
 		return weapon->getPointBlankAccuracy(withPup);
-	else if (attrib == "idealRange")
+	else if(attrib == "idealRange")
 		return weapon->getIdealRange(withPup);
-	else if (attrib == "maxRange")
+	else if(attrib == "maxRange")
 		return weapon->getMaxRange(withPup);
-	else if (attrib == "idealAccuracy")
+	else if(attrib == "idealAccuracy")
 		return weapon->getIdealAccuracy(withPup);
-	else if (attrib == "maxRangeAccuracy")
+	else if(attrib == "maxRangeAccuracy")
 		return weapon->getMaxRangeAccuracy(withPup);
-	else if (attrib == "attackSpeed")
+	else if(attrib == "attackSpeed")
 		return weapon->getAttackSpeed(withPup);
-	else if (attrib == "maxDamage")
+	else if(attrib == "maxDamage")
 		return weapon->getMaxDamage(withPup);
-	else if (attrib == "minDamage")
+	else if(attrib == "minDamage")
 		return weapon->getMinDamage(withPup);
-	else if (attrib == "woundsRatio")
+	else if(attrib == "woundsRatio")
 		return weapon->getWoundsRatio(withPup);
-	else if (attrib == "damageRadius")
+	else if(attrib == "damageRadius")
 		return weapon->getDamageRadius(withPup);
-	else if (attrib == "healthAttackCost")
+	else if(attrib == "healthAttackCost")
 		return weapon->getHealthAttackCost(withPup);
-	else if (attrib == "actionAttackCost")
+	else if(attrib == "actionAttackCost")
 		return weapon->getActionAttackCost(withPup);
-	else if (attrib == "mindAttackCost")
+	else if(attrib == "mindAttackCost")
 		return weapon->getMindAttackCost(withPup);
-	else if (attrib == "pointBlankRange")
+	else if(attrib == "pointBlankRange")
 		return weapon->getPointBlankRange(withPup);
 
 	return 0;
@@ -88,7 +89,7 @@ void PowerupObjectImplementation::updateCraftingValues(CraftingValues* values, b
 	/// effect 1-100
 
 	Reference<PowerupTemplate*> pup = cast<PowerupTemplate*>(templateObject.get());
-	if(pup == nullptr) {
+	if(pup == NULL) {
 		return;
 	}
 
@@ -174,10 +175,10 @@ void PowerupObjectImplementation::updateCraftingValues(CraftingValues* values, b
 	}
 }
 
-float PowerupObjectImplementation::getPowerupStat(const String& attribName) const {
+float PowerupObjectImplementation::getPowerupStat(const String& attribName) {
 
 	for(int i = 0; i < modifiers.size(); ++i) {
-		const PowerupStat* stat = &modifiers.get(i);
+		PowerupStat* stat = &modifiers.get(i);
 
 		if(attribName.toLowerCase() ==
 				stat->getAttributeToModify().toLowerCase()) {
@@ -187,11 +188,4 @@ float PowerupObjectImplementation::getPowerupStat(const String& attribName) cons
 	}
 
 	return 0;
-}
-
-void PowerupObjectImplementation::addPowerupStat(const String& attributeToMod, const String& name, const String& pupAttrib, float value) {
-	PowerupStat newStat(attributeToMod, name, pupAttrib);
-	newStat.setValue(value);
-
-	modifiers.add(newStat);
 }

@@ -2,17 +2,23 @@
 				Copyright <SWGEmu>
 		See file COPYING for copying conditions.*/
 
+#include "engine/engine.h"
+
 #include "server/zone/managers/resource/ResourceManager.h"
 #include "ResourceShiftTask.h"
 #include "resourcespawner/SampleTask.h"
 #include "resourcespawner/SampleResultsTask.h"
+#include "server/zone/managers/resource/InterplanetarySurvey.h"
+#include "server/zone/managers/resource/InterplanetarySurveyTask.h"
 #include "server/zone/objects/resource/ResourceContainer.h"
 #include "server/zone/packets/resource/ResourceContainerObjectDeltaMessage3.h"
 #include "server/zone/objects/player/sui/listbox/SuiListBox.h"
-#include "server/zone/objects/transaction/TransactionLog.h"
 
 void ResourceManagerImplementation::initialize() {
-	if (!loadConfigData()) {
+	lua = new Lua();
+	lua->init();
+
+	if(!loadConfigData()) {
 
 		loadDefaultConfig();
 
@@ -25,11 +31,14 @@ void ResourceManagerImplementation::initialize() {
 	loadSurveyData();
 }
 
+bool ResourceManagerImplementation::loadConfigFile() {
+	return lua->runFile("scripts/managers/resource_manager.lua");
+}
 void ResourceManagerImplementation::loadSurveyData() {
 	info("Loading survey data form surveys.db");
 	ObjectDatabaseManager* dbManager = ObjectDatabaseManager::instance();
 	ObjectDatabase* surveyDatabase = ObjectDatabaseManager::instance()->loadObjectDatabase("surveys", true);
-	if (surveyDatabase == nullptr) {
+	if (surveyDatabase == NULL) {
 		error("Could not load the survey database.");
 		return;
 	}
@@ -48,46 +57,33 @@ void ResourceManagerImplementation::loadSurveyData() {
 	}
 	info(String::valueOf(i) + " surveys loaded.", true);
 }
-
 int ResourceManagerImplementation::notifyObserverEvent(uint32 eventType, Observable* observable, ManagedObject* arg1, int64 arg2) {
 	if (eventType == ObserverEventType::POSTURECHANGED) {
 		CreatureObject* creature = cast<CreatureObject*>( observable);
-
-		if (creature == nullptr) {
-			return 0;
-		}
-
 		// Cancel Sampling on posture change
 		Reference<SampleTask*> task = creature->getPendingTask("sample").castTo<SampleTask*>( );
 		Reference<SampleResultsTask*> sampleResultsTask = creature->getPendingTask("sampleresults").castTo<SampleResultsTask*>( );
 
-		if (task != nullptr) {
+		if (task != NULL) {
 
 			task->stopSampling();
 			//creature->removePendingTask("sample");
 
-			if(sampleResultsTask != nullptr) {
+			if(sampleResultsTask != NULL) {
 				sampleResultsTask->cancel();
 				creature->removePendingTask("sampleresults");
 			}
 
 			creature->sendSystemMessage("@survey:sample_cancel");
 		}
-
-		return 1;
 	}
 
-	return 0;
+	return 1;
 }
 
 bool ResourceManagerImplementation::loadConfigData() {
-	Lua* lua = new Lua();
-	lua->init();
-
-	if (!lua->runFile("scripts/managers/resource_manager.lua")) {
-		delete lua;
+	if (!loadConfigFile())
 		return false;
-	}
 
 	bool loadFromScript = lua->getGlobalInt("buildInitialResourcesFromScript");
 
@@ -105,7 +101,7 @@ bool ResourceManagerImplementation::loadConfigData() {
 	shiftInterval = lua->getGlobalInt("averageShiftTime");
 
 	int aveduration = lua->getGlobalInt("aveduration");
-	int spawnThrottling = lua->getGlobalInt("spawnThrottling");
+	float spawnThrottling = float(lua->getGlobalInt("spawnThrottling")) / 100.0f;
 	int lowerGateOverride = lua->getGlobalInt("lowerGateOverride");
 	int maxSpawnQuantity = lua->getGlobalInt("maxSpawnQuantity");
 
@@ -140,8 +136,6 @@ bool ResourceManagerImplementation::loadConfigData() {
 	String natpoolexc = lua->getGlobalString("nativepoolexcludes");
 	resourceSpawner->initializeNativePool(natpoolinc, natpoolexc);
 
-	delete lua;
-
 	return true;
 }
 
@@ -163,9 +157,8 @@ void ResourceManagerImplementation::loadDefaultConfig() {
 }
 
 void ResourceManagerImplementation::stop() {
-	processor = nullptr;
-	zoneServer = nullptr;
-	resourceSpawner = nullptr;
+
+
 }
 
 void ResourceManagerImplementation::startResourceSpawner() {
@@ -178,19 +171,9 @@ void ResourceManagerImplementation::startResourceSpawner() {
 }
 
 void ResourceManagerImplementation::shiftResources() {
-	Timer timer(Time::MONOTONIC_TIME);
-
-	info("starting resource shift");
-
-	timer.start();
-
 	Locker _locker(_this.getReferenceUnsafeStaticCast());
 
 	resourceSpawner->shiftResources();
-
-	auto elapsed = timer.stop();
-
-	info("resource shift ended in " + String::valueOf(elapsed) + "ns");
 
 	Reference<ResourceShiftTask*> resourceShift = new ResourceShiftTask(_this.getReferenceUnsafeStaticCast());
 	resourceShift->schedule(shiftInterval);
@@ -209,11 +192,8 @@ void ResourceManagerImplementation::sendResourceListForSurvey(CreatureObject* pl
 ResourceContainer* ResourceManagerImplementation::harvestResource(CreatureObject* player, const String& type, const int quantity) {
 	return resourceSpawner->harvestResource(player, type, quantity);
 }
-bool ResourceManagerImplementation::harvestResourceToPlayer(TransactionLog& trx, CreatureObject* player, ResourceSpawn* resourceSpawn, const int quantity) {
-	trx.addState("resourceType", resourceSpawn->getType());
-	trx.addState("resourceName", resourceSpawn->getName());
-	trx.addState("resourceQuantity", quantity);
-	return resourceSpawner->harvestResource(trx, player, resourceSpawn, quantity);
+bool ResourceManagerImplementation::harvestResourceToPlayer(CreatureObject* player, ResourceSpawn* resourceSpawn, const int quantity) {
+	return resourceSpawner->harvestResource(player, resourceSpawn, quantity);
 }
 
 void ResourceManagerImplementation::sendSurvey(CreatureObject* playerCreature, const String& resname) {
@@ -226,24 +206,24 @@ void ResourceManagerImplementation::sendSample(CreatureObject* playerCreature, c
 	playerCreature->registerObserver(ObserverEventType::POSTURECHANGED, _this.getReferenceUnsafeStaticCast());
 }
 
-void ResourceManagerImplementation::createResourceSpawn(CreatureObject* playerCreature, const UnicodeString& args) {
+void ResourceManagerImplementation::createResourceSpawn(CreatureObject* playerCreature, const String& restype) {
 	Locker _locker(_this.getReferenceUnsafeStaticCast());
 
-	ResourceSpawn* resourceSpawn = resourceSpawner->manualCreateResourceSpawn(playerCreature, args);
+	ResourceSpawn* resourceSpawn = resourceSpawner->manualCreateResourceSpawn(restype);
 
-	if (resourceSpawn != nullptr) {
+	if (resourceSpawn != NULL) {
 		StringBuffer buffer;
 		buffer << "Spawned " << resourceSpawn->getName() << " of type " << resourceSpawn->getType();
 
 		playerCreature->sendSystemMessage(buffer.toString());
 	} else {
-		playerCreature->sendSystemMessage("Could not create resource spawn, invalid arguments");
+		playerCreature->sendSystemMessage("Could not create spawn " + restype);
 	}
 
 }
 
 ResourceSpawn* ResourceManagerImplementation::getResourceSpawn(const String& spawnName) {
-	ResourceSpawn* spawn = nullptr;
+	ResourceSpawn* spawn = NULL;
 
 	ReadLocker locker(_this.getReferenceUnsafeStaticCast());
 
@@ -270,7 +250,7 @@ void ResourceManagerImplementation::getResourceListByType(Vector<ManagedReferenc
 
 		ZoneResourceMap* zoneMap = resourceMap->getZoneResourceList(zoneName);
 
-		if (zoneMap != nullptr) {
+		if (zoneMap != NULL) {
 			for (int i = 0; i < zoneMap->size(); ++i) {
 				resourceSpawn = zoneMap->get(i);
 
@@ -280,13 +260,13 @@ void ResourceManagerImplementation::getResourceListByType(Vector<ManagedReferenc
 				if (type == 9){
 					if (resourceSpawn->isType("radioactive"))
 						list.add(resourceSpawn);
-				} else if (type == 10) {
-					if (resourceSpawn->isType("inorganic"))
-						list.add(resourceSpawn);
-				} else if (resourceSpawn->getSurveyToolType() == type) {
+				}
+
+				else if (resourceSpawn->getSurveyToolType() == type) {
 					list.add(resourceSpawn);
 				}
 			}
+
 		}
 
 	} catch (Exception& e) {
@@ -302,19 +282,19 @@ uint32 ResourceManagerImplementation::getAvailablePowerFromPlayer(CreatureObject
 	for (int i = 0; i < inventory->getContainerObjectsSize(); i++) {
 		Reference<SceneObject*> obj =  inventory->getContainerObject(i).castTo<SceneObject*>();
 
-		if (obj == nullptr || !obj->isResourceContainer())
+		if (obj == NULL || !obj->isResourceContainer())
 			continue;
 
 		ResourceContainer* rcno = cast<ResourceContainer*>( obj.get());
 		ManagedReference<ResourceSpawn*> spawn = rcno->getSpawnObject();
 
-		if (spawn == nullptr || !spawn->isEnergy())
+		if (spawn == NULL || !spawn->isEnergy())
 			continue;
 
 		int quantity = rcno->getQuantity();
 		int pe = spawn->getValueOf(CraftingManager::PE); // potential energy
 
-		float modifier = Math::max(1.0f, pe / 500.0f);
+		float modifier = MAX(1.0f, pe / 500.0f);
 
 		power += (uint32) (modifier * quantity);
 	}
@@ -330,10 +310,10 @@ void ResourceManagerImplementation::removePowerFromPlayer(CreatureObject* player
 
 	uint32 containerPower = 0;
 
-	for (int i = inventory->getContainerObjectsSize() - 1; i >= 0 && power > 0; --i) {
+	for (int i = 0; i < inventory->getContainerObjectsSize() && power > 0; ++i) {
 		ManagedReference<SceneObject*> obj = inventory->getContainerObject(i);
 
-		if (obj == nullptr || !obj->isResourceContainer())
+		if (obj == NULL || !obj->isResourceContainer())
 			continue;
 
 		ResourceContainer* rcno = cast<ResourceContainer*>( obj.get());
@@ -342,13 +322,13 @@ void ResourceManagerImplementation::removePowerFromPlayer(CreatureObject* player
 
 		ManagedReference<ResourceSpawn*> spawn = rcno->getSpawnObject();
 
-		if (spawn == nullptr || !spawn->isEnergy())
+		if (spawn == NULL || !spawn->isEnergy())
 			continue;
 
 		int quantity = rcno->getQuantity();
 		int pe = spawn->getValueOf(CraftingManager::PE); // potential energy
 
-		float modifier = Math::max(1.0f, pe / 500.0f);
+		float modifier = MAX(1.0f, pe / 500.0f);
 
 		containerPower = modifier * quantity;
 
@@ -372,19 +352,19 @@ void ResourceManagerImplementation::removePowerFromPlayer(CreatureObject* player
 void ResourceManagerImplementation::givePlayerResource(CreatureObject* playerCreature, const String& restype, const int quantity) {
 	ManagedReference<ResourceSpawn* > spawn = getResourceSpawn(restype);
 
-	if(spawn == nullptr) {
+	if(spawn == NULL) {
 		playerCreature->sendSystemMessage("Selected spawn does not exist.");
 		return;
 	}
 
 	ManagedReference<SceneObject*> inventory = playerCreature->getSlottedObject("inventory");
 
-	if(inventory != nullptr && !inventory->isContainerFullRecursive()) {
+	if(inventory != NULL && !inventory->hasFullContainerObjects()) {
 		Locker locker(spawn);
 
 		Reference<ResourceContainer*> newResource = spawn->createResource(quantity);
 
-		if(newResource != nullptr) {
+		if(newResource != NULL) {
 			spawn->extractResource("", quantity);
 
 			Locker rlocker(newResource);
@@ -440,11 +420,9 @@ String ResourceManagerImplementation::dumpResources() {
 String ResourceManagerImplementation::despawnResource(String& resourceName) {
 
 	ManagedReference<ResourceSpawn*> spawn = getResourceSpawn(resourceName);
-	if(spawn == nullptr) {
+	if(spawn == NULL) {
 		return "Spawn not Found";
 	}
-
-	Locker locker(spawn);
 
 	spawn->setDespawned(time(0) - 1);
 	resourceSpawner->shiftResources();

@@ -5,6 +5,7 @@
 #ifndef FORMUPCOMMAND_H_
 #define FORMUPCOMMAND_H_
 
+#include "server/zone/objects/scene/SceneObject.h"
 #include "SquadLeaderCommand.h"
 
 class FormupCommand : public SquadLeaderCommand {
@@ -26,15 +27,6 @@ public:
 			return GENERALERROR;
 
 		ManagedReference<CreatureObject*> player = cast<CreatureObject*>(creature);
-
-		if (player == nullptr)
-			return GENERALERROR;
-
-		ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
-
-		if (ghost == nullptr)
-			return GENERALERROR;
-
 		ManagedReference<GroupObject*> group = player->getGroup();
 
 		if (!checkGroupLeader(player, group))
@@ -54,9 +46,9 @@ public:
 		if (!doFormUp(player, group))
 			return GENERALERROR;
 
-		if (!ghost->getCommandMessageString(STRING_HASHCODE("formup")).isEmpty() && creature->checkCooldownRecovery("command_message")) {
-			UnicodeString shout(ghost->getCommandMessageString(STRING_HASHCODE("formup")));
- 	 	 	server->getChatManager()->broadcastChatMessage(player, shout, 0, 80, player->getMoodID(), 0, ghost->getLanguageID());
+		if (player->isPlayerCreature() && player->getPlayerObject()->getCommandMessageString(STRING_HASHCODE("formup")).isEmpty()==false && creature->checkCooldownRecovery("command_message")) {
+			UnicodeString shout(player->getPlayerObject()->getCommandMessageString(STRING_HASHCODE("formup")));
+ 	 	 	server->getChatManager()->broadcastMessage(player, shout, 0, 0, 80);
  	 	 	creature->updateCooldownTimer("command_message", 30 * 1000);
 		}
 
@@ -64,30 +56,34 @@ public:
 	}
 
 	bool doFormUp(CreatureObject* leader, GroupObject* group) const {
-		if (leader == nullptr || group == nullptr)
+		if (leader == NULL || group == NULL)
 			return false;
 
 		for (int i = 0; i < group->getGroupSize(); i++) {
 
-			ManagedReference<CreatureObject*> member = group->getGroupMember(i);
+			ManagedReference<SceneObject*> member = group->getGroupMember(i);
 
-			if (member == nullptr || !member->isPlayerCreature())
+			if (member == NULL || !member->isPlayerCreature() || member->getZone() != leader->getZone())
 				continue;
 
-			if (!isValidGroupAbilityTarget(leader, member, false))
+			CreatureObject* memberPlayer = cast<CreatureObject*>( member.get());
+
+			if (!isValidGroupAbilityTarget(leader, memberPlayer, false))
 				continue;
 
-			Locker clocker(member, leader);
+			Locker clocker(memberPlayer, leader);
 
-			sendCombatSpam(member);
+			sendCombatSpam(memberPlayer);
 
-			if (member->isDizzied())
-				member->removeStateBuff(CreatureState::DIZZY);
+			if (memberPlayer->isDizzied())
+
+					memberPlayer->removeStateBuff(CreatureState::DIZZY);
 					
-			if (member->isStunned())
-				member->removeStateBuff(CreatureState::STUNNED);
 
-			checkForTef(leader, member);
+			if (memberPlayer->isStunned())
+					memberPlayer->removeStateBuff(CreatureState::STUNNED);
+
+			checkForTef(leader, memberPlayer);
 		}
 
 		return true;

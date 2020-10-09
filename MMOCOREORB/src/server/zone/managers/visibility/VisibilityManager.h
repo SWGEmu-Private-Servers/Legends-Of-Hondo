@@ -5,6 +5,7 @@
 #ifndef VISIBILITYMANAGER_H_
 #define VISIBILITYMANAGER_H_
 
+#include "engine/engine.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 
 namespace server {
@@ -21,40 +22,9 @@ class VisibilityManager : public Singleton<VisibilityManager>, public Logger, pu
 	 * Any player with a visibility greater than or equal to this amount will be
 	 * available on the bounty hunter mission terminal as a player bounty.
 	 */
-
-	float terminalVisThreshold;
-
-	/**
-	 * If a players visibility falls below this value they will be removed from the BH terminals
-	 */
-	float falloffThreshold;
-
-	/**
-	 * This is the maximum visibility that can be gained
-	 */
-	float maxVisibility;
-
-
-
-	/**
-	 * Number of days before complete visibility decay
-	 */
-	unsigned int totalDecayTimeInDays;
-
-	/**
-	 * Number of seconds before rescheduling the decay event. Must be SHORTER than 1 day
-	 */
-	unsigned int visDecayTickRate;
-
-	/**
-	 * Amount of visibility to decay per tick
-	 */
-	float visDecayPerTick;
-
-	/**
-	 * Jedi PVP rating divisor
-	 */
-	float pvpRatingDivisor;
+	enum {
+		TERMINALVISIBILITYLIMIT = 24
+	};
 
 	/**
 	 * Rebel faction string.
@@ -87,6 +57,19 @@ class VisibilityManager : public Singleton<VisibilityManager>, public Logger, pu
 	Mutex visibilityListLock;
 
 	/**
+	 * Add the player to the bounty list.
+	 * @param creature the player to add.
+	 * @param reward the reward for the player bounty.
+	 */
+	void addPlayerToBountyList(CreatureObject* creature, int reward);
+
+	/**
+	 * Remove the player to the bounty list.
+	 * @param creature the player to remove.
+	 */
+	void removePlayerFromBountyList(CreatureObject* creature);
+
+	/**
 	 * Calculate/generate a reward for the player bounty.
 	 * @param creature the jedi's player creature object.
 	 * @return calculated/generated reward.
@@ -110,42 +93,29 @@ class VisibilityManager : public Singleton<VisibilityManager>, public Logger, pu
 
 public:
 
-	enum { // default visibility modifiers if value does not exist in LUA
-		SABERVISMOD = 10, // equipping saber cost
-		COMBATVISMOD = 25, // Combat action or force power cost
-		BUFFVISMOD = 10 // jedi self buff cost
-	};
-
 	/**
 	 * Constructor.
 	 */
 	VisibilityManager();
 
-	float getTerminalVisThreshold();
+	/**
+	 * Login a player and add it to the visibility list if he/she still has visibility.
+	 * @param creature the player to login.
+	 */
+	void login(CreatureObject* creature);
 
 	/**
-	 * Load lua configuration for visibility variables
+	 * Logout a player and remove him/her from the visibility list.
+	 * @param creature the player to logout.
 	 */
-	void loadConfiguration();
-
-	/**
-	 * Add player to the visibility list if he/she still has visibility.
-	 * @param creature the player to add.
-	 */
-	void addToVisibilityList(CreatureObject* creature);
-
-	/**
-	 * Remove player from the visibility list.
-	 * @param creature the player to remove.
-	 */
-	void removeFromVisibilityList(CreatureObject* creature);
+	void logout(CreatureObject* creature);
 
 	/**
 	 * Increase visibility for a player. The player is added to the visibility list
 	 * if not already in the list.
 	 * @param creature the player to increase the visibility for.
 	 */
-	void increaseVisibility(CreatureObject* creature, int visibilityMultiplier);
+	void increaseVisibility(CreatureObject* creature);
 
 	/**
 	 * Clear the visibility for a player and remove him/her from the visibility
@@ -159,14 +129,6 @@ public:
 	 * Iterates through all currently online players and decays their visibility.
 	 */
 	void performVisiblityDecay();
-
-	int getPvpRatingDivisor() {
-		return pvpRatingDivisor;
-	}
-
-	unsigned int getVisDecayTickRate() {
-		return visDecayTickRate;
-	}
 };
 
 }

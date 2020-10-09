@@ -9,6 +9,7 @@
 #define CITYREGISTERSUICALLBACK_H_
 
 #include "server/zone/objects/player/sui/SuiCallback.h"
+#include "server/zone/Zone.h"
 #include "server/zone/managers/city/CityManager.h"
 #include "server/zone/objects/region/CityRegion.h"
 
@@ -37,12 +38,10 @@ public:
 		this->unregister = unregister;
 	}
 
-	void run(CreatureObject* player, SuiBox* suiBox, uint32 eventIndex, Vector<UnicodeString>* args) {
-		bool cancelPressed = (eventIndex == 1);
-
+	void run(CreatureObject* player, SuiBox* suiBox, bool cancelPressed, Vector<UnicodeString>* args) {
 		ManagedReference<CityRegion*> city = cityRegion.get();
 
-		if (city == nullptr || cancelPressed)
+		if (city == NULL || cancelPressed)
 			return;
 
 		Locker lock(city, player);

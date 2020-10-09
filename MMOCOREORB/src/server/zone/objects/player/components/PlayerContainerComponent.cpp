@@ -6,104 +6,97 @@
  */
 
 #include "PlayerContainerComponent.h"
-#include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/player/FactionStatus.h"
 #include "server/zone/objects/tangible/wearables/ArmorObject.h"
+#include "server/zone/objects/tangible/wearables/RobeObject.h"
 #include "server/zone/objects/tangible/weapon/WeaponObject.h"
 #include "server/zone/managers/player/PlayerManager.h"
 #include "server/zone/ZoneServer.h"
+#include "server/zone/packets/creature/CreatureObjectMessage6.h"
 #include "server/zone/managers/visibility/VisibilityManager.h"
 
-int PlayerContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject* object, int containmentType, String& errorDescription) const {
+int PlayerContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject* object, int containmentType, String& errorDescription) {
 	CreatureObject* creo = dynamic_cast<CreatureObject*>(sceneObject);
 
-	if (creo == nullptr) {
-		return TransferErrorCode::PLAYERUSEMASKERROR;
-	}
-
 	if (object->isTangibleObject() && containmentType == 4) {
-		TangibleObject* wearable = cast<TangibleObject*>(object);
+		TangibleObject* wearable = cast<TangibleObject*>( object);
 
 		SharedTangibleObjectTemplate* tanoData = dynamic_cast<SharedTangibleObjectTemplate*>(wearable->getObjectTemplate());
+		Vector<uint32>* races = tanoData->getPlayerRaces();
+		String race = creo->getObjectTemplate()->getFullTemplateString();
 
-		if (tanoData != nullptr) {
-			const auto races = tanoData->getPlayerRaces();
-			String race = creo->getObjectTemplate()->getFullTemplateString();
+		if (!races->contains(race.hashCode())) {
+			errorDescription = "You lack the necessary requirements to wear this object";
 
-			if (!races->contains(race.hashCode())) {
-				errorDescription = "You lack the necessary requirements to wear this object";
-
-				return TransferErrorCode::PLAYERUSEMASKERROR;
-			}
+			return TransferErrorCode::PLAYERUSEMASKERROR;
 		}
 
 		if (creo->isPlayerCreature()) {
 			if (!wearable->isNeutral()) {
-				if (wearable->isImperial() && (creo->getFactionStatus() == FactionStatus::ONLEAVE || !creo->isImperial())) {
+				ManagedReference<PlayerObject*> playerObject = creo->getPlayerObject();
+
+				if (wearable->isImperial() && (playerObject->getFactionStatus() == FactionStatus::ONLEAVE || !creo->isImperial())) {
 					errorDescription = "You lack the necessary requirements to wear this object";
 
 					return TransferErrorCode::PLAYERUSEMASKERROR;
 				}
 
-				if (wearable->isRebel() && (creo->getFactionStatus() == FactionStatus::ONLEAVE || !creo->isRebel())) {
+				if (wearable->isRebel() && (playerObject->getFactionStatus() == FactionStatus::ONLEAVE || !creo->isRebel())) {
 					errorDescription = "You lack the necessary requirements to wear this object";
 
 					return TransferErrorCode::PLAYERUSEMASKERROR;
 				}
 			}
 		}
+	}
 
-		if (object->isArmorObject()) {
-			PlayerManager* playerManager = sceneObject->getZoneServer()->getPlayerManager();
+	if (object->isArmorObject() && containmentType == 4) {
+		PlayerManager* playerManager = sceneObject->getZoneServer()->getPlayerManager();
 
-			if (!playerManager->checkEncumbrancies(creo, cast<ArmorObject*>(object))) {
-				errorDescription = "You lack the necessary secondary stats to equip this item";
+		if (!playerManager->checkEncumbrancies(dynamic_cast<CreatureObject*>(sceneObject), cast<ArmorObject*>( object))) {
+			errorDescription = "You lack the necessary secondary stats to equip this item";
 
-				return TransferErrorCode::NOTENOUGHENCUMBRANCE;
-			}
+			return TransferErrorCode::NOTENOUGHENCUMBRANCE;
 		}
+	}
 
-		if (object->isWearableObject()) {
-			if (tanoData != nullptr) {
-				const Vector<String>& skillsRequired = tanoData->getCertificationsRequired();
+	if (object->isWearableObject() && containmentType == 4) {
+		ManagedReference<WearableObject*> wearable = cast<WearableObject*>( object);
+		SharedTangibleObjectTemplate* wearableData = dynamic_cast<SharedTangibleObjectTemplate*>(wearable->getObjectTemplate());
 
-				if (skillsRequired.size() > 0) {
-					bool hasSkill = false;
+		Vector<String> skillsRequired = wearableData->getCertificationsRequired();
 
-					for (int i = 0; i < skillsRequired.size(); i++) {
-						const String& skill = skillsRequired.get(i);
-
-						if (!skill.isEmpty() && creo->hasSkill(skill)) {
-							hasSkill = true;
-							break;
-						}
-					}
-
-					if (!hasSkill) {
-						errorDescription = "@error_message:insufficient_skill"; // You lack the skill to use this item.
-
-						return TransferErrorCode::PLAYERUSEMASKERROR;
-					}
+		if (skillsRequired.size() > 0) {
+			bool hasSkill = false;
+			for (int i = 0; i < skillsRequired.size(); i++) {
+				String skill = skillsRequired.get(i);
+				if (!skill.isEmpty() && creo->hasSkill(skill)) {
+					hasSkill = true;
+					break;
 				}
 			}
+
+			if (!hasSkill) {
+				errorDescription = "@error_message:insufficient_skill"; // You lack the skill to use this item.
+
+				return TransferErrorCode::PLAYERUSEMASKERROR;
+			}
 		}
+	}
 
-		if (object->isWeaponObject()) {
-			WeaponObject* weapon = cast<WeaponObject*>(object);
-			int bladeColor = weapon->getBladeColor();
-			PlayerObject* ghost = creo->getPlayerObject();
+	if (object->isWeaponObject() && containmentType == 4) {
+		ManagedReference<WeaponObject*> weapon = cast<WeaponObject*>( object);
+		int bladeColor = weapon->getBladeColor();
 
-			if (weapon->isJediWeapon()) {
-				if (bladeColor == 31) {
-					errorDescription = "@jedi_spam:lightsaber_no_color";
-					return TransferErrorCode::PLAYERUSEMASKERROR;
-				}
-
-				if (weapon->getCraftersName() != creo->getFirstName() && !ghost->isPrivileged()) {
-					errorDescription = "@jedi_spam:not_your_lightsaber";
-					return TransferErrorCode::PLAYERUSEMASKERROR;
-				}
+		if (weapon->isJediWeapon()){
+			if (bladeColor == 31) {
+				errorDescription = "@jedi_spam:lightsaber_no_color";
+				return TransferErrorCode::PLAYERUSEMASKERROR;
+			}
+			if (weapon->getCraftersName() != creo->getFirstName()) {
+				errorDescription = "@jedi_spam:not_your_lightsaber";
+				return TransferErrorCode::PLAYERUSEMASKERROR;
 			}
 		}
 	}
@@ -115,12 +108,8 @@ int PlayerContainerComponent::canAddObject(SceneObject* sceneObject, SceneObject
  * Is called when this object has been inserted with an object
  * @param object object that has been inserted
  */
-int PlayerContainerComponent::notifyObjectInserted(SceneObject* sceneObject, SceneObject* object) const {
+int PlayerContainerComponent::notifyObjectInserted(SceneObject* sceneObject, SceneObject* object) {
 	CreatureObject* creo = dynamic_cast<CreatureObject*>(sceneObject);
-
-	if (creo == nullptr) {
-		return 0;
-	}
 
 	if (object->isArmorObject()) {
 		PlayerManager* playerManager = sceneObject->getZoneServer()->getPlayerManager();
@@ -130,6 +119,14 @@ int PlayerContainerComponent::notifyObjectInserted(SceneObject* sceneObject, Sce
 	if (object->isTangibleObject()) {
 		TangibleObject* tano = cast<TangibleObject*>(object);
 		tano->applySkillModsTo(creo);
+	}
+
+	PlayerObject* ghost = creo->getPlayerObject();
+
+	if (ghost && ghost->isJedi()) {
+		if ((object->isRobeObject() && cast<RobeObject*>( object)->getSkillRequired() != "") || (object->isWeaponObject() && cast<WeaponObject*>(object)->isJediWeapon())) {
+			VisibilityManager::instance()->increaseVisibility(creo);
+		}
 	}
 
 	if (object->isInstrument() && creo->isEntertaining())
@@ -153,21 +150,6 @@ int PlayerContainerComponent::notifyObjectInserted(SceneObject* sceneObject, Sce
 		tano->addTemplateSkillMods(creo);
 	}
 
-	// Jedi stuff below.
-	PlayerObject* ghost = creo->getPlayerObject();
-
-	if (ghost && ghost->isJedi()) {
-
-		if (object->isRobeObject()) {
-			ghost->recalculateForcePower();
-		} else if (object->isWeaponObject()) {
-			WeaponObject* weaponObject = cast<WeaponObject*>(object);
-			if (weaponObject->isJediWeapon()) {
-				VisibilityManager::instance()->increaseVisibility(creo, VisibilityManager::SABERVISMOD);
-			}
-		}
-	}
-
 	return ContainerComponent::notifyObjectInserted(sceneObject, object);
 }
 
@@ -175,12 +157,8 @@ int PlayerContainerComponent::notifyObjectInserted(SceneObject* sceneObject, Sce
  * Is called when an object was removed
  * @param object object that has been inserted
  */
-int PlayerContainerComponent::notifyObjectRemoved(SceneObject* sceneObject, SceneObject* object, SceneObject* destination) const {
+int PlayerContainerComponent::notifyObjectRemoved(SceneObject* sceneObject, SceneObject* object, SceneObject* destination) {
 	CreatureObject* creo = dynamic_cast<CreatureObject*>(sceneObject);
-
-	if (creo == nullptr) {
-		return 0;
-	}
 
 	if (object->isArmorObject()) {
 		PlayerManager* playerManager = creo->getZoneServer()->getPlayerManager();
@@ -195,6 +173,12 @@ int PlayerContainerComponent::notifyObjectRemoved(SceneObject* sceneObject, Scen
 	if (object->isInstrument()) {
 		if (creo->isPlayingMusic())
 			creo->stopEntertaining();
+	}
+
+	if (creo->getPlayerObject().get() != NULL && creo->getPlayerObject()->isJedi()) {
+		if ((object->isRobeObject() && cast<RobeObject*>( object)->getSkillRequired() != "") || (object->isWeaponObject() && cast<WeaponObject*>(object)->isJediWeapon())) {
+			VisibilityManager::instance()->increaseVisibility(creo);
+		}
 	}
 
 	//this it to update the equipment list
@@ -213,15 +197,6 @@ int PlayerContainerComponent::notifyObjectRemoved(SceneObject* sceneObject, Scen
 	if (object->isTangibleObject()) {
 		ManagedReference<TangibleObject*> tano = object->asTangibleObject();
 		tano->removeTemplateSkillMods(creo);
-	}
-
-	// Jedi stuff below.
-	PlayerObject* ghost = creo->getPlayerObject();
-
-	if (ghost && ghost->isJedi()) {
-		if (object->isRobeObject()) {
-			ghost->recalculateForcePower();
-		}
 	}
 
 	return ContainerComponent::notifyObjectRemoved(sceneObject, object, destination);

@@ -21,8 +21,8 @@ class SceneObject;
 using namespace server::zone::objects::scene;
 
 namespace creature {
-namespace ai {
 class AiAgent;
+namespace ai {
 namespace bt {
 
 class LuaBehavior : public Object {
